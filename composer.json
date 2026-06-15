@@ -1,0 +1,15 @@
+{
+    "name": "starisian/sparxstar-platform-contracts",
+    "description": "Shared PHP interfaces and contracts for the Starisian Technologies platform. No implementation, no dependencies.",
+    "type": "library",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "SparxStar\\Contracts\\": "contracts/"
+        }
+    },
+    "minimum-stability": "stable"
+}
