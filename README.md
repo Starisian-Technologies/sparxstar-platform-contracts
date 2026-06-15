@@ -1,6 +1,6 @@
 <img width="1280" height="640" alt="SPARXSTAR Banners-8 (3)" src="https://github.com/user-attachments/assets/f6c7185e-a597-439f-98e6-7fe817eea620" />
 
-# SPARXSTAR  Platform Contracts Specifications
+# SPARXSTAR  Platform Contracts 
 
 
 Starisian Technologies © 2026. All Rights Reserved.
@@ -9,13 +9,45 @@ Starisian Technologies © 2026. All Rights Reserved.
 
 ## Overview
 
-This repository is the authoritative source for the **Starisian Platform Contract Specifications (SPCS)** — a platform contract defining the invariants, end-points and boundaries for compliant implementation:
+This repository is the authoritative source for the **Starisian Platform Contract (SPS)** — a platform contract defining the invariants, end-points and boundaries for compliant implementation:
 
-
+No implementation. No WordPress dependencies. No secrets.
 
 ---
 
-## Repository Contents
+Install
+-------
+
+bash
+
+```
+composer require starisian/sparxstar-platform-contracts
+```
+
+Structure
+---------
+
+```
+src/
+  Helios/           # Identity, consent, retention
+  Sirus/            # Context, trust, authority (when added)
+  Ouroboros/         # Integrity, signing (when added)
+```
+
+Each folder is auto-synced from its source repo on merge to main. Do not edit files here directly --- changes will be overwritten on the next sync.
+
+Usage
+-----
+
+php
+
+```
+use SparxStar\Contracts\Helios\SPXHeliosClientInterface;
+use SparxStar\Contracts\Helios\SPXConsentReference;
+use SparxStar\Contracts\Helios\SPXRetentionClass;
+use SparxStar\Contracts\Helios\SPXConsentTier;
+use SparxStar\Contracts\Helios\SPXIamcEnvelope;
+```
 
  
 
