@@ -13,11 +13,13 @@ IAtlas provides the DTOs, enums, and structures that every service uses to commu
 ## Why You Need It
 
 Consistency matters. Without IAtlas:
+
 - Services invent their own data structures (chaos)
 - Translating between services is error-prone
 - Adding new features requires touching 10 services
 
 With IAtlas:
+
 - All services share the same data models
 - Adding a field happens in one place
 - Services integrate easily
@@ -25,18 +27,20 @@ With IAtlas:
 
 ## At a Glance
 
-| Aspect | Detail |
-|--------|--------|
-| **Status** | Production-ready |
-| **Audience** | Platform integrators, service developers |
-| **Key Components** | Dictionary, NodeEngine, WordPad |
-| **Dependencies** | None (platform-agnostic) |
-| **Versioning** | Semantic; breaking changes require governance |
+| Aspect             | Detail                                        |
+| ------------------ | --------------------------------------------- |
+| **Status**         | Production-ready                              |
+| **Audience**       | Platform integrators, service developers      |
+| **Key Components** | Dictionary, NodeEngine, WordPad               |
+| **Dependencies**   | None (platform-agnostic)                      |
+| **Versioning**     | Semantic; breaking changes require governance |
 
 ## Core Components
 
 ### Dictionary
+
 Shared terminology and vocabulary:
+
 - Enumerations (languages, device types, error codes)
 - Constants (timeouts, limits, defaults)
 - Validation rules (what values are valid?)
@@ -45,7 +49,9 @@ Shared terminology and vocabulary:
 **Use when:** You need to know what values are allowed or what an enum means
 
 ### NodeEngine
+
 Workflow orchestration and task processing:
+
 - DAG (Directed Acyclic Graph) definitions
 - Node types and constraints
 - State machines
@@ -54,7 +60,9 @@ Workflow orchestration and task processing:
 **Use when:** You're building multi-step workflows or complex processing
 
 ### WordPad
+
 Text processing and NLP (Natural Language Processing) support:
+
 - Text extraction
 - Language detection
 - Tokenization
@@ -112,21 +120,27 @@ $result = new JobResult(
 ## Key Concepts
 
 ### Single Source of Truth
+
 Every service references IAtlas for common structures. This means:
+
 - Change a data model → All services see the change
 - No duplication → Less maintenance burden
 - Type safety → Less runtime errors
 - Self-documenting → The data model is the spec
 
 ### Backward Compatibility
+
 IAtlas changes carefully:
+
 - Adding fields is safe (old code ignores them)
 - Removing fields requires major version bump
 - Renaming requires deprecation period
 - New enums added without breaking old code
 
 ### Validation
+
 IAtlas structures often include validation:
+
 ```php
 // Validation baked in
 try {
@@ -137,7 +151,9 @@ try {
 ```
 
 ### Type Safety
+
 Using IAtlas structures provides PHP type hints:
+
 ```php
 // IDE knows exactly what properties exist
 function processJob(JobResult $result): string {
@@ -148,6 +164,7 @@ function processJob(JobResult $result): string {
 ## Common Integration Patterns
 
 ### Pattern 1: Using Enums
+
 ```php
 // Instead of hardcoding strings
 // OLD: if ($format === 'wav') { ... }
@@ -157,6 +174,7 @@ if ($format === AudioFormat::WAV) { ... }
 ```
 
 ### Pattern 2: Data Transfer Objects
+
 ```php
 // Services communicate using IAtlas DTOs
 $result = $esu->transcribe(...);
@@ -168,6 +186,7 @@ echo $result->getConfidenceScore();
 ```
 
 ### Pattern 3: Workflow Definition
+
 ```php
 // Define complex workflows using NodeEngine
 $workflow = new Workflow(
@@ -186,17 +205,22 @@ $workflow = new Workflow(
 ## Important Notes
 
 ### Versioning
+
 IAtlas follows semantic versioning. Breaking changes are rare and require governance approval.
 
 ### Performance
+
 IAtlas structures are lightweight and fast:
+
 - Enums are pre-compiled
 - DTOs are plain PHP objects
 - No database calls
 - Typically <1ms to instantiate
 
 ### Extensibility
+
 Services can extend IAtlas structures:
+
 ```php
 // Safe to extend
 class CustomJobResult extends JobResult {
@@ -205,7 +229,9 @@ class CustomJobResult extends JobResult {
 ```
 
 ### Validation
+
 Validate early using IAtlas structures:
+
 ```php
 // IAtlas catches invalid values before they propagate
 $format = AudioFormat::from($userInput);  // Throws if invalid

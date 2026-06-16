@@ -15,6 +15,7 @@ WordPad abstracts the complexity of working with human language so services don'
 ## Why You Need It
 
 Text processing is surprisingly complex:
+
 - Detecting language requires more than checking first few bytes
 - Different scripts require different tokenization rules
 - Unicode edge cases abound
@@ -24,17 +25,19 @@ WordPad handles it all, consistently.
 
 ## At a Glance
 
-| Aspect | Detail |
-|--------|--------|
-| **Purpose** | Text processing and NLP operations |
-| **Use Case** | Analyze, transform, or understand text |
-| **Languages** | 50+ supported |
-| **Part Of** | IAtlas (Data Structures) |
+| Aspect        | Detail                                 |
+| ------------- | -------------------------------------- |
+| **Purpose**   | Text processing and NLP operations     |
+| **Use Case**  | Analyze, transform, or understand text |
+| **Languages** | 50+ supported                          |
+| **Part Of**   | IAtlas (Data Structures)               |
 
 ## Core Capabilities
 
 ### Language Detection
+
 Identify what language text is in:
+
 ```php
 $lang = $wordpad->detectLanguage("Bonjour, comment allez-vous?");
 // Returns: LanguageCode::FR
@@ -43,7 +46,9 @@ $lang = $wordpad->detectLanguage("Bonjour, comment allez-vous?");
 Confidence scoring and mixed-language detection included.
 
 ### Tokenization
+
 Break text into meaningful units (words, sentences, etc.):
+
 ```php
 $tokens = $wordpad->tokenize(
 	text: "The quick brown fox jumps.",
@@ -54,7 +59,9 @@ $tokens = $wordpad->tokenize(
 ```
 
 ### Text Extraction
+
 Pull text from various formats:
+
 ```php
 $text = $wordpad->extractText(
 	source: $pdfFile,
@@ -64,7 +71,9 @@ $text = $wordpad->extractText(
 ```
 
 ### Format Conversion
+
 Convert text between formats:
+
 ```php
 $html = $wordpad->convert(
 	text: $markdown,
@@ -74,7 +83,9 @@ $html = $wordpad->convert(
 ```
 
 ### Encoding Handling
+
 Work with various character encodings safely:
+
 ```php
 $cleaned = $wordpad->normalize(
 	text: $userInput,
@@ -182,7 +193,9 @@ $rtf = $wordpad->convert(
 ## Key Concepts
 
 ### Language Codes
+
 WordPad uses BCP-47 language codes (from Dictionary):
+
 - `en-US` — English (US)
 - `es-MX` — Spanish (Mexico)
 - `zh-Hans` — Chinese (Simplified)
@@ -190,23 +203,29 @@ WordPad uses BCP-47 language codes (from Dictionary):
 ### Token Levels
 
 **WORD**
+
 - Individual words
 - Punctuation separate
 - `"Hello, world!"` → `["Hello", ",", "world", "!"]`
 
 **SENTENCE**
+
 - Complete sentences
 - Respects language-specific sentence boundaries
 - Handles abbreviations correctly
 
 **PARAGRAPH**
+
 - Blocks of text separated by line breaks
 
 **DOCUMENT**
+
 - Entire document as single token
 
 ### Confidence Scoring
+
 Language detection returns confidence:
+
 - 0.0-1.0 scale
 - `0.95` means 95% confident
 - Low confidence (<0.8) may indicate:
@@ -215,7 +234,9 @@ Language detection returns confidence:
   - Unusual dialect
 
 ### Encoding Normalization
+
 Ensures consistent text representation:
+
 - `NFC` — Composed form (Apple, some databases prefer)
 - `NFD` — Decomposed form (compatibility, some systems prefer)
 - Both are "the same" text, but bytes differ
@@ -225,6 +246,7 @@ WordPad normalizes to avoid bugs from encoding surprises.
 ## Common Integration Patterns
 
 ### Pattern 1: Auto-Detect Language for Transcription
+
 ```php
 $transcription = $result->getTranscription();
 
@@ -238,6 +260,7 @@ if ($detected->confidence > 0.9) {
 ```
 
 ### Pattern 2: Extract Text from User Upload
+
 ```php
 // User uploads a document
 $text = $wordpad->extractText(
@@ -254,6 +277,7 @@ $document->setLanguage($language);
 ```
 
 ### Pattern 3: Tokenize for Search
+
 ```php
 // User query: "The quick brown fox"
 $tokens = $wordpad->tokenize(
@@ -267,6 +291,7 @@ $results = $index->searchAll($tokens);
 ```
 
 ### Pattern 4: Normalize Before Storage
+
 ```php
 // User input often has odd encoding
 $normalized = $wordpad->normalize(
@@ -282,9 +307,11 @@ $model->save($normalized);
 ## Important Notes
 
 ### Versioning
+
 WordPad follows semantic versioning. Breaking changes are rare.
 
 ### Performance
+
 - Language detection: <50ms per 1000 chars
 - Tokenization: <10ms per 1000 words
 - Text extraction: varies by document (1-30 seconds for PDFs)
@@ -292,13 +319,16 @@ WordPad follows semantic versioning. Breaking changes are rare.
 Use caching for frequently analyzed text.
 
 ### Language Coverage
+
 Supported languages include most major world languages (50+):
+
 - European: English, Spanish, French, German, Italian, etc.
 - Asian: Chinese (Simplified, Traditional), Japanese, Korean
 - Middle Eastern: Arabic, Hebrew
 - And many more
 
 ### Privacy
+
 - Text is processed locally (not sent to cloud)
 - No logging of text content
 - Language detection doesn't require storing text

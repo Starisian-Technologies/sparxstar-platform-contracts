@@ -1,7 +1,6 @@
 <img width="1280" height="640" alt="SPARXSTAR Banners-8 (3)" src="https://github.com/user-attachments/assets/f6c7185e-a597-439f-98e6-7fe817eea620" />
 
-# SPARXSTAR  Platform Contracts 
-
+# SPARXSTAR Platform Contracts
 
 Starisian Technologies © 2026. All Rights Reserved.
 
@@ -15,8 +14,7 @@ No implementation. No WordPress dependencies. No secrets.
 
 ---
 
-Install
--------
+## Install
 
 bash
 
@@ -24,8 +22,7 @@ bash
 composer require starisian/sparxstar-platform-contracts
 ```
 
-Structure
----------
+## Structure
 
 ```
 src/
@@ -36,8 +33,7 @@ src/
 
 Each folder is auto-synced from its source repo on merge to main. Do not edit files here directly --- changes will be overwritten on the next sync.
 
-Usage
------
+## Usage
 
 php
 
@@ -48,8 +44,6 @@ use SparxStar\Contracts\Helios\SPXRetentionClass;
 use SparxStar\Contracts\Helios\SPXConsentTier;
 use SparxStar\Contracts\Helios\SPXIamcEnvelope;
 ```
-
- 
 
 ---
 

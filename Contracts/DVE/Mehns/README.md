@@ -16,12 +16,12 @@ Voice systems are only as good as your data. Mehns gives you:
 
 ## Quick Overview
 
-| Aspect | Detail |
-|--------|--------|
-| **Purpose** | Audio analytics and quality logging |
-| **Tracks** | Audio characteristics, success rates, performance |
-| **Consumers** | Ops teams, quality engineers, product analytics |
-| **Part Of** | DVE (Digital Voice Engine) |
+| Aspect        | Detail                                            |
+| ------------- | ------------------------------------------------- |
+| **Purpose**   | Audio analytics and quality logging               |
+| **Tracks**    | Audio characteristics, success rates, performance |
+| **Consumers** | Ops teams, quality engineers, product analytics   |
+| **Part Of**   | DVE (Digital Voice Engine)                        |
 
 ## What It Measures
 
@@ -47,6 +47,7 @@ Mehns runs continuously; you typically don't interact with it directly.
 Mehns data is accessed through operational dashboards and metrics APIs (not shown in contract interfaces).
 
 To understand your voice pipeline's health:
+
 - Monitor transcription success rates
 - Track average audio quality scores
 - Watch for spikes in processing latency

@@ -26,17 +26,18 @@ In regulated industries (finance, healthcare), Ouroboros is mandatory.
 
 ## At a Glance
 
-| Aspect | Detail |
-|--------|--------|
-| **Purpose** | Digital signing, integrity, and audit trails |
-| **Input** | Data to sign, key identifier, operation context |
-| **Output** | Digital signature, audit log entry |
-| **Consumers** | Compliance systems, critical operations |
-| **Part Of** | IAMC (Identity, Auth, Messaging & Context) |
+| Aspect        | Detail                                          |
+| ------------- | ----------------------------------------------- |
+| **Purpose**   | Digital signing, integrity, and audit trails    |
+| **Input**     | Data to sign, key identifier, operation context |
+| **Output**    | Digital signature, audit log entry              |
+| **Consumers** | Compliance systems, critical operations         |
+| **Part Of**   | IAMC (Identity, Auth, Messaging & Context)      |
 
 ## Core Capabilities
 
 ### Digital Signing
+
 - **Asymmetric signing** — Use private keys securely
 - **Key rotation** — Roll keys without invalidating old signatures
 - **Batch signing** — Efficiently sign many items
@@ -44,12 +45,14 @@ In regulated industries (finance, healthcare), Ouroboros is mandatory.
 - **Time-stamping** — Prove when something was signed
 
 ### Integrity Verification
+
 - **Signature verification** — Confirm data hasn't been tampered
 - **Chain of custody** — Verify entire operation sequence
 - **Checksum validation** — Detect corruption or transmission errors
 - **Timestamp verification** — Prove operations happened in order
 
 ### Audit Trails
+
 - **Immutable logs** — Append-only; can't be deleted or reordered
 - **Signed entries** — Each log entry is signed by Ouroboros
 - **Full context** — Who, what, when, where, why
@@ -146,7 +149,7 @@ $auditTrail = $ouroboros->getAuditTrail(
 
 foreach ($auditTrail as $entry) {
 	echo "{$entry['actor']} did {$entry['operation']} at {$entry['timestamp']}\\n";
-    
+
 	// Verify each entry is signed correctly
 	if (!$ouroboros->verifyAuditEntry($entry)) {
 		echo "WARNING: Entry signature mismatch!\\n";
@@ -159,12 +162,14 @@ foreach ($auditTrail as $entry) {
 ### Digital Signatures
 
 A digital signature is like a seal that proves:
+
 1. **Who signed** — Only the holder of the private key could create it
 2. **What was signed** — The signature only works for this exact data
 3. **When** — Timestamp proves when signing happened
 4. **Integrity** — If data changes, signature fails
 
 **How it works:**
+
 - Data is hashed (fingerprinted)
 - Hash is encrypted with private key
 - Anyone with public key can verify the signature
@@ -173,6 +178,7 @@ A digital signature is like a seal that proves:
 ### Key Rotation
 
 Old keys keep working; new operations use new keys:
+
 - New signatures use `ouroboros-prod-v2` key
 - Old signatures created with `ouroboros-prod-v1` still verify
 - Keys can be scheduled for retirement
@@ -181,12 +187,14 @@ Old keys keep working; new operations use new keys:
 ### Immutable Logs
 
 Audit logs are **append-only**:
+
 - New entries always go to the end
 - Existing entries never change
 - Deletion impossible (by design)
 - Reordering impossible (cryptographically verified)
 
 If someone wants to cover up a log entry, they'd have to:
+
 1. Delete or modify the entry
 2. Resign all subsequent entries (but they don't have the private key)
 3. The break in signatures would be obvious
@@ -194,11 +202,13 @@ If someone wants to cover up a log entry, they'd have to:
 ### Non-Repudiation
 
 If a user signs something with their key:
+
 - They can't claim they didn't sign it
 - The signature proves they did
 - No plausible deniability
 
 This makes Ouroboros critical for:
+
 - Agreements and contracts
 - Financial transactions
 - Legal evidence
@@ -207,6 +217,7 @@ This makes Ouroboros critical for:
 ## Common Integration Patterns
 
 ### Pattern 1: Sign on Transaction
+
 ```
 1. User initiates transfer of $10,000
 2. Backend creates transaction record
@@ -216,6 +227,7 @@ This makes Ouroboros critical for:
 ```
 
 ### Pattern 2: Audit Compliance
+
 ```
 1. Auditor requests proof of all access for past year
 2. Backend calls ouroboros->getAuditTrail()
@@ -225,6 +237,7 @@ This makes Ouroboros critical for:
 ```
 
 ### Pattern 3: Incident Investigation
+
 ```
 1. Security team detects suspicious activity
 2. They retrieve audit trail for suspicious user
@@ -234,6 +247,7 @@ This makes Ouroboros critical for:
 ```
 
 ### Pattern 4: Regulatory Reporting
+
 ```
 1. Regulator demands proof of data handling compliance
 2. Company generates Ouroboros audit report
@@ -245,17 +259,22 @@ This makes Ouroboros critical for:
 ## Important Notes
 
 ### Versioning
+
 Ouroboros follows semantic versioning. Breaking changes are rare and documented.
 
 ### Performance Impact
+
 Signing is **fast** (typically <10ms) but not free:
+
 - Cryptographic operations do have latency
 - Don't sign on every single operation
 - Sign critical/high-value operations
 - Use batch signing for high volume
 
 ### Key Management
+
 Private keys must be:
+
 - Stored securely (hardware security module preferred)
 - Never exported
 - Rotated regularly
@@ -263,7 +282,9 @@ Private keys must be:
 - Access-logged
 
 ### Audit Log Storage
+
 Audit logs must be:
+
 - Stored in tamper-evident storage
 - Replicated to secure archive
 - Retained per compliance policy (often 7 years)
@@ -271,6 +292,7 @@ Audit logs must be:
 - Accessed only via audit layer
 
 ### Compliance
+
 - **SOC2** — Audit logs required; Ouroboros provides signed, immutable logs
 - **HIPAA** — Non-repudiation and audit trail mandatory for healthcare
 - **PCI-DSS** — Transaction signing and audit trails required

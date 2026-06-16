@@ -26,17 +26,18 @@ Without Helios, you can't legally operate. With it, you're compliant by design.
 
 ## At a Glance
 
-| Aspect | Detail |
-|--------|--------|
-| **Purpose** | Identity verification and consent management |
-| **Input** | User session tokens, operation context |
-| **Output** | Identity context, consent verification |
-| **Consumers** | All platform services |
-| **Part Of** | IAMC (Identity, Auth, Messaging & Context) |
+| Aspect        | Detail                                       |
+| ------------- | -------------------------------------------- |
+| **Purpose**   | Identity verification and consent management |
+| **Input**     | User session tokens, operation context       |
+| **Output**    | Identity context, consent verification       |
+| **Consumers** | All platform services                        |
+| **Part Of**   | IAMC (Identity, Auth, Messaging & Context)   |
 
 ## Core Capabilities
 
 ### Session Validation
+
 - **Token verification** — Is this session real and valid?
 - **Freshness checking** — Is the session still within TTL?
 - **Revocation detection** — Has the user logged out elsewhere?
@@ -44,6 +45,7 @@ Without Helios, you can't legally operate. With it, you're compliant by design.
 - **Device binding** — Verify the device matches the original session
 
 ### Consent Management
+
 - **Granular consent** — Track consent per operation/data-use
 - **Version tracking** — Know which consent version users accepted
 - **Scope enforcement** — Prevent scope creep in operations
@@ -51,6 +53,7 @@ Without Helios, you can't legally operate. With it, you're compliant by design.
 - **Withdrawal** — Honor requests to revoke consent
 
 ### Data Retention
+
 - **Policy enforcement** — Delete data according to agreed schedules
 - **Retention tracking** — Know when data should be deleted
 - **Right to deletion** — Respond to user deletion requests
@@ -131,7 +134,9 @@ $helios->requestDeletion(
 ## Key Concepts
 
 ### Sessions are Stateless
+
 Helios doesn't store sessions on a server. Sessions are:
+
 - **Encrypted tokens** — Contains user identity and metadata
 - **Cryptographically signed** — Can't be forged
 - **Short-lived** — Typically 15-60 minutes
@@ -140,15 +145,18 @@ Helios doesn't store sessions on a server. Sessions are:
 ### Consent Tiers
 
 **Technical Consent** ("Can API X call API Y?")
+
 - Backend-to-backend authorization
 - Controlled by service owners
 
 **User Consent** ("Does the user agree?")
+
 - Explicit opt-in for data use
 - Tracked in Helios
 - Can be withdrawn anytime
 
 **Compliance Consent** ("Does this comply with law?")
+
 - Regulatory requirements
 - Geographic-specific (GDPR in EU, CCPA in CA, etc.)
 - Enforced by Helios policy
@@ -156,17 +164,21 @@ Helios doesn't store sessions on a server. Sessions are:
 ### Retention vs. Deletion
 
 **Retention**: How long data can be kept
+
 - User data: Typically retained while account active
 - Analytics: 1-2 years
 - Logs: 7 years (compliance)
 
 **Deletion**: When data must be removed
+
 - On user request (right to deletion)
 - On account closure
 - After retention period expires
 
 ### Device Binding
+
 Helios can bind sessions to specific devices:
+
 - Session token works only on registered device
 - If device changes unexpectedly, session invalidated
 - Forces re-authentication from new device
@@ -175,6 +187,7 @@ Helios can bind sessions to specific devices:
 ## Common Integration Patterns
 
 ### Pattern 1: Request Authentication
+
 ```
 1. User logs in → Helios creates session token
 2. Frontend stores token
@@ -184,6 +197,7 @@ Helios can bind sessions to specific devices:
 ```
 
 ### Pattern 2: Consent Workflow
+
 ```
 1. User tries to access feature
 2. Backend checks helios->verifyConsent()
@@ -194,6 +208,7 @@ Helios can bind sessions to specific devices:
 ```
 
 ### Pattern 3: Right to Deletion
+
 ```
 1. User in settings clicks "Delete my account"
 2. Backend calls helios->requestDeletion()
@@ -207,30 +222,37 @@ Helios can bind sessions to specific devices:
 ## Important Notes
 
 ### Versioning
+
 Helios follows semantic versioning. Breaking changes are rare and documented.
 
 ### Session TTL (Time-to-Live)
+
 - Short-lived access tokens: 15 minutes
 - Refresh tokens: 7 days (or longer)
 - Always revalidate on each request
 - Don't cache validation results for long periods
 
 ### Latency Impact
+
 Helios adds typical latency of **50-150ms** per validation. This is intentional.
 
 To optimize:
+
 - Cache validation results briefly (30-60 seconds)
 - Use connection pooling to Helios service
 - Batch consent checks when possible
 
 ### Privacy By Design
+
 - Helios doesn't store passwords
 - Helios doesn't log request bodies
 - Session tokens are encrypted in transit
 - Audit logs are immutable and encrypted
 
 ### Compliance Readiness
+
 Helios generates compliance reports for:
+
 - **Consent audits** — Who consented to what
 - **Deletion audits** — What was deleted and when
 - **Access audits** — Who accessed whose data

@@ -1,5 +1,5 @@
 ---
-applyTo: '**'
+applyTo: "**"
 ---
 
 # SPARXSTAR Platform Contracts — Agent Architecture
@@ -11,12 +11,14 @@ This repository is the **authoritative, versioned contract layer** for the Stari
 ## Key Principles
 
 ### ✓ Do This
+
 - **Read** interfaces to understand platform architecture
 - **Reference** these contracts in your code and documentation
 - **Request changes** through the governance process (see Amendments below)
 - **Write consumers** that implement these interfaces correctly
 
 ### ✗ Do NOT Do This
+
 - **Edit files directly** — contracts are auto-synced from source service repositories
 - **Add implementation code** — this repo contains only interfaces and contracts
 - **Include dependencies** — contracts must be pure PHP with no external dependencies
@@ -26,12 +28,12 @@ This repository is the **authoritative, versioned contract layer** for the Stari
 
 Each contract directory corresponds to a source service repository:
 
-| Contract | Source Repo | Syncs From |
-|----------|------------|-----------|
-| `/Contracts/DVE/**` | sparxstar-dve | Digital Voice Engine services |
-| `/Contracts/IAMC/**` | sparxstar-iamc | Identity, Auth, Messaging, Context |
-| `/Contracts/IAtlas/**` | sparxstar-iatlas | Data structures and orchestration |
-| `/Contracts/Starmus/**` | sparxstar-starmus | Audio service contracts |
+| Contract                | Source Repo       | Syncs From                         |
+| ----------------------- | ----------------- | ---------------------------------- |
+| `/Contracts/DVE/**`     | sparxstar-dve     | Digital Voice Engine services      |
+| `/Contracts/IAMC/**`    | sparxstar-iamc    | Identity, Auth, Messaging, Context |
+| `/Contracts/IAtlas/**`  | sparxstar-iatlas  | Data structures and orchestration  |
+| `/Contracts/Starmus/**` | sparxstar-starmus | Audio service contracts            |
 
 When a source repository updates its contracts, this repo receives a notification via GitHub Actions and merges the changes automatically. **Never edit these files locally** — your changes will be overwritten on the next sync.
 
@@ -65,10 +67,7 @@ If you're maintaining one of the source services and need to update a contract:
 
 ## Governance & Licensing
 
-- **© 2026 Starisian Technologies** — All Rights Reserved
-- **PATENT PENDING** — Technologies and methods are proprietary
-- **GPL-2.0-or-later** — Composer package license
-- **Breaking Changes** — Require explicit governance approval
+- **Proprietary** — Use is governed exclusively by the repository [LICENSE](LICENSE)
 
 ## Questions?
 

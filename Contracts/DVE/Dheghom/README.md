@@ -16,13 +16,13 @@ Transcription accuracy depends heavily on audio quality. Dheghom ensures that ev
 
 ## Quick Overview
 
-| Aspect | Detail |
-|--------|--------|
-| **Purpose** | Audio preprocessing and enhancement |
-| **Input** | Raw audio files (any supported format) |
-| **Output** | Optimized audio ready for transcription |
-| **Called By** | Sky-Esu transcription pipeline |
-| **Part Of** | DVE (Digital Voice Engine) |
+| Aspect        | Detail                                  |
+| ------------- | --------------------------------------- |
+| **Purpose**   | Audio preprocessing and enhancement     |
+| **Input**     | Raw audio files (any supported format)  |
+| **Output**    | Optimized audio ready for transcription |
+| **Called By** | Sky-Esu transcription pipeline          |
+| **Part Of**   | DVE (Digital Voice Engine)              |
 
 ## Key Capabilities
 

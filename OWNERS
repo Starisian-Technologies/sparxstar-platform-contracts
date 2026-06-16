@@ -1,0 +1,15 @@
+Repository: SPARXSTAR Platform Contracts
+Authority: Starisian Technologies
+Primary Maintainer: Max Barrett (@MaximillianGroup)
+
+Scope
+- Contracts under Contracts/ are governed artifacts synchronized from source service repositories.
+- Repository automation, documentation, licensing, and governance files are managed in this repository.
+
+Approval Expectations
+- Contract changes require service-owner approval in the source repository and governance approval for breaking or material changes.
+- Repository policy, licensing, and security-process changes require owner approval.
+
+Escalation
+- Security concerns follow SECURITY.md.
+- Contribution and review expectations follow CONTRIBUTING.md.

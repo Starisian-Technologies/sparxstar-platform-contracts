@@ -18,13 +18,13 @@ If DVE is the engine, Sky is the transmission.
 
 ## Quick Overview
 
-| Aspect | Detail |
-|--------|--------|
-| **Purpose** | Voice request orchestration and routing |
-| **Consumers** | Applications calling DVE transcription |
-| **Coordinates** | Sky-Esu, Sirus, Helios, job storage |
-| **Pattern** | Async: request → job_id → poll result |
-| **Part Of** | DVE (Digital Voice Engine) |
+| Aspect          | Detail                                  |
+| --------------- | --------------------------------------- |
+| **Purpose**     | Voice request orchestration and routing |
+| **Consumers**   | Applications calling DVE transcription  |
+| **Coordinates** | Sky-Esu, Sirus, Helios, job storage     |
+| **Pattern**     | Async: request → job_id → poll result   |
+| **Part Of**     | DVE (Digital Voice Engine)              |
 
 ## Core Functionality
 
@@ -80,22 +80,29 @@ if ($result->isComplete()) {
 ## Key Concepts
 
 ### Job IDs
+
 Every transcription returns a UUID v4. Store this to retrieve results later. Job IDs are unique and immutable.
 
 ### Async Pattern
+
 Sky operates **asynchronously** — calls return immediately with a job_id. The actual work happens in the background. This ensures:
+
 - Your app never blocks waiting for transcription
 - Multiple requests process in parallel
 - Network drops don't lose work
 
 ### Authority & Context
+
 Sky requires that **Sirus validates the request** before dispatching. If Sirus fails, the job is rejected (fail-closed). This ensures:
+
 - Only authorized users transcribe
 - Device context is verified
 - Network conditions are understood
 
 ### Priority & Load Balancing
+
 Sky monitors queue depth and routes intelligently:
+
 - Short audio files may be routed to fast engines
 - Premium accounts may get queue priority
 - High load may trigger graceful degradation
@@ -104,6 +111,7 @@ Sky monitors queue depth and routes intelligently:
 ## Common Patterns
 
 ### Pattern 1: Simple Async Transcription
+
 ```
 1. User speaks
 2. POST audio to backend → get job_id
@@ -113,6 +121,7 @@ Sky monitors queue depth and routes intelligently:
 ```
 
 ### Pattern 2: Transcription with Translation
+
 ```
 1. User speaks Spanish
 2. Sky routes to Esu with lang=es-MX, targetLang=en-US
@@ -122,6 +131,7 @@ Sky monitors queue depth and routes intelligently:
 ```
 
 ### Pattern 3: Batch Processing
+
 ```
 1. Multiple users upload audio
 2. Sky enqueues all jobs
@@ -133,22 +143,27 @@ Sky monitors queue depth and routes intelligently:
 ## Important Notes
 
 ### Versioning
+
 Sky follows semantic versioning. Minor updates add features; breaking changes are rare and documented.
 
 ### Error Handling
+
 - **Sirus failures** → Job rejected immediately (fail-closed)
 - **Invalid audio** → Job fails with clear error message
 - **Queue overflow** → Jobs queue up; oldest/highest-priority go first
 - **Processing timeouts** → Job fails with diagnostic information
 
 ### Performance
+
 - Average transcription latency: 2-10 seconds depending on audio length
 - Handles 1000s of concurrent jobs
 - TUS upload adapts to network conditions
 - Queue processing is continuous (24/7)
 
 ### Network Resilience
+
 Sky is **designed for unreliable networks**:
+
 - Audio upload uses TUS (resume-friendly)
 - Results cached durably
 - Job tracking survives service restarts

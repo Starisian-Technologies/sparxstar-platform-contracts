@@ -24,17 +24,18 @@ If you're building compliant, production-grade applications, IAMC is your founda
 
 ## At a Glance
 
-| Aspect | Detail |
-|--------|--------|
-| **Status** | Production-ready |
-| **Audience** | Enterprise applications, compliance-focused systems |
-| **Key Services** | Helios, Sirus, Ouroboros |
-| **Dependencies** | Redis, audit storage |
-| **Versioning** | Semantic; breaking changes rare |
+| Aspect           | Detail                                              |
+| ---------------- | --------------------------------------------------- |
+| **Status**       | Production-ready                                    |
+| **Audience**     | Enterprise applications, compliance-focused systems |
+| **Key Services** | Helios, Sirus, Ouroboros                            |
+| **Dependencies** | Redis, audit storage                                |
+| **Versioning**   | Semantic; breaking changes rare                     |
 
 ## Core Capabilities
 
 ### Identity (Helios)
+
 - **Session validation** — Verify user sessions are valid and current
 - **Consent management** — Track what users have agreed to
 - **Retention policies** — Enforce data deletion schedules
@@ -42,6 +43,7 @@ If you're building compliant, production-grade applications, IAMC is your founda
 - **Multi-factor support** — Integrate MFA workflows
 
 ### Context & Authority (Sirus)
+
 - **Device fingerprinting** — Understand device characteristics
 - **Network awareness** — Detect location, connection type, quality
 - **Trust scoring** — Assess request trustworthiness
@@ -49,6 +51,7 @@ If you're building compliant, production-grade applications, IAMC is your founda
 - **Anomaly detection** — Flag unusual request patterns
 
 ### Integrity (Ouroboros)
+
 - **Digital signatures** — Sign critical data structures
 - **Integrity verification** — Prove data hasn't been tampered
 - **Audit trail** — Immutable log of who did what when
@@ -108,12 +111,15 @@ use SparxStar\Sirus\Contracts\SPXSirusClientInterface;
 ## Key Concepts
 
 ### Fail-Closed
+
 IAMC always **rejects by default**. If any validation can't complete or is uncertain, the request is rejected. Your app must then decide whether to retry, ask for more info, or fail the user request.
 
 ### Session Validity
+
 Sessions are stateless but trustworthy. Helios generates tokens; every request must revalidate. Sessions can expire, be revoked, or become untrusted based on device context.
 
 ### Consent Layers
+
 - **Technical consent** — "Can your API call our API?"
 - **User consent** — "Did this user agree to this?"
 - **Compliance consent** — "Does this comply with laws/regulations?"
@@ -121,7 +127,9 @@ Sessions are stateless but trustworthy. Helios generates tokens; every request m
 All three must be satisfied.
 
 ### Device Context
+
 Sirus tracks:
+
 - Device fingerprint (OS, browser, hardware)
 - Network conditions (latency, bandwidth, type)
 - Geographic location (GeoIP, if available)
@@ -130,7 +138,9 @@ Sirus tracks:
 Context is captured but not stored; it's transient.
 
 ### Audit Immutability
+
 Critical operations are signed by Ouroboros. Even if a hacker gets to your database:
+
 - They can't forge the signature
 - They can't delete the log
 - You can prove who did what when
@@ -138,18 +148,23 @@ Critical operations are signed by Ouroboros. Even if a hacker gets to your datab
 ## Important Notes
 
 ### Versioning
+
 IAMC follows semantic versioning. Breaking changes are rare and require governance approval.
 
 ### Network Latency
+
 IAMC adds latency (typically 50-200ms per request). This is intentional — security requires verification. Cache where possible; don't call IAMC per millisecond.
 
 ### Storage Requirements
+
 - Session tokens: Short-lived (Redis)
 - Consent records: Long-lived (compliant storage)
 - Audit logs: Permanent (append-only, signed)
 
 ### Compliance
+
 IAMC is built for:
+
 - **GDPR** — Consent tracking, right to deletion
 - **CCPA** — User data requests, opt-out
 - **SOC2** — Audit trails, access controls

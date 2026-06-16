@@ -17,18 +17,19 @@ Esu is where voice becomes usable:
 
 ## At a Glance
 
-| Aspect | Detail |
-|--------|--------|
-| **Purpose** | AI transcription and translation orchestration |
-| **Input** | Audio file path (any format), language code, context |
-| **Output** | Job ID (async), then transcription + optional translation |
-| **Uses** | Yahura (ASR), Behistun (translation), Sirus (authority) |
-| **Audience** | Speech-to-text applications, multilingual platforms |
-| **Part Of** | DVE (Digital Voice Engine) |
+| Aspect       | Detail                                                    |
+| ------------ | --------------------------------------------------------- |
+| **Purpose**  | AI transcription and translation orchestration            |
+| **Input**    | Audio file path (any format), language code, context      |
+| **Output**   | Job ID (async), then transcription + optional translation |
+| **Uses**     | Yahura (ASR), Behistun (translation), Sirus (authority)   |
+| **Audience** | Speech-to-text applications, multilingual platforms       |
+| **Part Of**  | DVE (Digital Voice Engine)                                |
 
 ## Core Capabilities
 
 ### Transcription
+
 - **Automatic Speech Recognition** — Convert audio to text with high accuracy
 - **Noise-robust** — Works in noisy environments (Dheghom preprocessing helps)
 - **Speaker identification** — Can identify multiple speakers in one audio
@@ -36,12 +37,14 @@ Esu is where voice becomes usable:
 - **Custom vocabulary** — Learn domain-specific terms and proper nouns
 
 ### Translation
+
 - **Single-call transcribe+translate** — Get both in one async job
 - **50+ language pairs** — Major world languages supported
 - **Cultural adaptation** — Translates idioms, not just words
 - **Glossary support** — Preserve brand names and technical terms
 
 ### Reliability
+
 - **TUS upload** — Resilient for low-bandwidth or unstable networks
 - **Automatic retry** — Failed jobs retry with exponential backoff
 - **Timeout handling** — Explicit failure if processing takes too long
@@ -116,17 +119,22 @@ echo "English: " . $result->getTranslation();
 ## Key Concepts
 
 ### Job IDs
+
 Every call returns a UUID v4. Store this to track and retrieve results. Job results are immutable and permanent.
 
 ### Async Pattern
+
 Esu **never blocks**. It:
+
 1. Returns a job_id immediately
 2. Processes in the background
 3. Stores the result durably
 4. Returns the same result every time you ask for that job_id
 
 ### Sirus Authority
+
 Before processing any audio, Esu validates:
+
 - Is the caller authenticated? (via Helios identity)
 - Does the caller have permission? (via Sirus)
 - What device context applies? (network, device type)
@@ -134,10 +142,13 @@ Before processing any audio, Esu validates:
 If Sirus validation fails, the job is rejected immediately (fail-closed).
 
 ### Language Codes
+
 Always use BCP-47 format (e.g., `en-US`, `es-MX`, `zh-Hans`). Invalid codes cause immediate validation errors.
 
 ### Correction Storage
+
 When users correct a transcription, that correction is stored in the CorrectionStore. This data:
+
 - Improves future transcription accuracy
 - Is anonymized and aggregated
 - Is subject to your data retention policies
@@ -146,6 +157,7 @@ When users correct a transcription, that correction is stored in the CorrectionS
 ## Common Integration Patterns
 
 ### Pattern 1: Transcription in a Chat App
+
 ```
 1. User presses 🎤, speaks message
 2. Frontend uploads audio via TUS
@@ -157,6 +169,7 @@ When users correct a transcription, that correction is stored in the CorrectionS
 ```
 
 ### Pattern 2: Customer Service Recording
+
 ```
 1. Call ends
 2. System uploads recording to backend
@@ -167,6 +180,7 @@ When users correct a transcription, that correction is stored in the CorrectionS
 ```
 
 ### Pattern 3: Batch Processing for Archive
+
 ```
 1. Company has 1000 archived audio files
 2. Backend loops through and calls esu->transcribe() for each
@@ -179,9 +193,11 @@ When users correct a transcription, that correction is stored in the CorrectionS
 ## Important Notes
 
 ### Versioning
+
 Sky Esu follows semantic versioning. Breaking changes are rare and always documented.
 
 ### Performance Characteristics
+
 - **Typical latency**: 2–10 seconds for audio under 60 seconds
 - **Concurrent jobs**: Handles thousands simultaneously
 - **Languages**: 50+ supported natively
@@ -189,17 +205,20 @@ Sky Esu follows semantic versioning. Breaking changes are rare and always docume
 - **Custom models**: Available for high-volume customers
 
 ### Cost Considerations
+
 - Billing typically per-minute of audio processed
 - Translation adds to cost (roughly 1.5x transcription cost)
 - Bulk discounts available for high-volume use
 
 ### Network Resilience
+
 - Audio upload uses TUS (resume-friendly if connection drops)
 - Results cached permanently
 - Job IDs survive service restarts
 - Polling can happen from different servers
 
 ### Security & Privacy
+
 - Audio files processed securely with encryption in transit
 - Results cached but can be deleted on request
 - Corrections are user data (subject to privacy laws)
@@ -207,6 +226,7 @@ Sky Esu follows semantic versioning. Breaking changes are rare and always docume
 - No audio content is logged; only metadata
 
 ### Error Handling
+
 - **Invalid audio format** → Job fails with diagnostic message
 - **Unsupported language** → Immediate validation error
 - **Sirus failure** → Job rejected (fail-closed)

@@ -1,0 +1,16 @@
+{
+    "name": "sparxstar-platform-contracts-tooling",
+    "private": true,
+    "license": "UNLICENSED",
+    "scripts": {
+        "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
+        "format:md": "prettier --write \"**/*.md\"",
+        "format:md:check": "prettier --check \"**/*.md\"",
+        "check:contracts": "bash ./bin/check-contracts.sh",
+        "check": "npm run lint:md && npm run format:md:check && npm run check:contracts"
+    },
+    "devDependencies": {
+        "markdownlint-cli2": "^0.18.1",
+        "prettier": "^3.5.3"
+    }
+}

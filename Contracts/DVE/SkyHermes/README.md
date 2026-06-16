@@ -18,13 +18,13 @@ SkyHermes ensures communication reaches users reliably, even across unstable net
 
 ## Quick Overview
 
-| Aspect | Detail |
-|--------|--------|
-| **Purpose** | Async messaging orchestration |
-| **Channels** | Voice, SMS, push notifications, email |
-| **Audience** | Alert systems, notification platforms |
-| **Part Of** | DVE (Digital Voice Engine) |
-| **Pattern** | Queue-based; fire-and-forget with tracking |
+| Aspect       | Detail                                     |
+| ------------ | ------------------------------------------ |
+| **Purpose**  | Async messaging orchestration              |
+| **Channels** | Voice, SMS, push notifications, email      |
+| **Audience** | Alert systems, notification platforms      |
+| **Part Of**  | DVE (Digital Voice Engine)                 |
+| **Pattern**  | Queue-based; fire-and-forget with tracking |
 
 ## Core Capabilities
 
@@ -81,9 +81,11 @@ $status = $hermes->getDeliveryStatus($messageId);
 ## Key Concepts
 
 ### Message IDs
+
 Every message gets a UUID v4. Track this to verify delivery and audit communication.
 
 ### Channels
+
 - **Voice** — Synthesized or recorded audio to phone
 - **SMS** — Text message to phone number
 - **Push** — Native app notification
@@ -91,14 +93,18 @@ Every message gets a UUID v4. Track this to verify delivery and audit communicat
 - **In-app** — In-application notification badge
 
 ### Retry Strategy
+
 Failed deliveries retry automatically:
+
 - First retry: 1 minute
 - Second retry: 5 minutes
 - Third retry: 30 minutes
 - Give up after 24 hours
 
 ### Rate Limiting
+
 SkyHermes respects:
+
 - User opt-in preferences
 - Do-not-disturb schedules
 - Maximum frequency (e.g., no more than 5 alerts per hour)
@@ -107,6 +113,7 @@ SkyHermes respects:
 ## Common Patterns
 
 ### Pattern 1: Alert User of System Issue
+
 ```
 1. System detects problem
 2. Call hermes->sendVoiceNotification(userId, message)
@@ -116,6 +123,7 @@ SkyHermes respects:
 ```
 
 ### Pattern 2: Send to Many Users
+
 ```
 1. Create notification for 50K users
 2. Loop through users; call hermes->sendVoiceNotification() each
@@ -125,6 +133,7 @@ SkyHermes respects:
 ```
 
 ### Pattern 3: Smart Routing
+
 ```
 1. Alert goes to user
 2. SkyHermes checks user preferences

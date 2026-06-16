@@ -15,11 +15,13 @@ Dictionary ensures that when one service says "language = en-US", every other se
 ## Why You Need It
 
 Without Dictionary:
+
 - Services use different formats for the same concept (chaos)
 - A typo in a string breaks silently
 - Adding a new language requires updating 10 services
 
 With Dictionary:
+
 - All services speak the same language
 - Invalid values are caught at compile time
 - Adding new values is centralized
@@ -27,16 +29,17 @@ With Dictionary:
 
 ## At a Glance
 
-| Aspect | Detail |
-|--------|--------|
-| **Purpose** | Shared enums, constants, and terminology |
-| **Use Case** | "What are the valid values for language?" |
-| **Type Safety** | PHP enums ensure type safety |
-| **Part Of** | IAtlas (Data Structures) |
+| Aspect          | Detail                                    |
+| --------------- | ----------------------------------------- |
+| **Purpose**     | Shared enums, constants, and terminology  |
+| **Use Case**    | "What are the valid values for language?" |
+| **Type Safety** | PHP enums ensure type safety              |
+| **Part Of**     | IAtlas (Data Structures)                  |
 
 ## Common Enumerations
 
 ### Audio Formats
+
 ```php
 AudioFormat::WAV
 AudioFormat::MP3
@@ -46,6 +49,7 @@ AudioFormat::M4A
 ```
 
 ### Languages (BCP-47)
+
 ```php
 LanguageCode::EN_US      // English (US)
 LanguageCode::EN_GB      // English (UK)
@@ -56,6 +60,7 @@ LanguageCode::ZH_HANT    // Chinese (Traditional)
 ```
 
 ### Device Types
+
 ```php
 DeviceType::MOBILE
 DeviceType::TABLET
@@ -65,6 +70,7 @@ DeviceType::UNKNOWN
 ```
 
 ### Job Status
+
 ```php
 JobStatus::QUEUED
 JobStatus::PROCESSING
@@ -74,6 +80,7 @@ JobStatus::CANCELLED
 ```
 
 ### Error Codes
+
 ```php
 ErrorCode::INVALID_AUDIO_FORMAT
 ErrorCode::UNSUPPORTED_LANGUAGE
@@ -128,21 +135,22 @@ try {
 
 ## Common Enumerations Reference
 
-| Enum | Values | Purpose |
-|------|--------|---------|
-| `AudioFormat` | WAV, MP3, OGG, FLAC, M4A, OPUS | Audio file types |
-| `LanguageCode` | en-US, es-MX, zh-Hans, etc. | BCP-47 language codes |
-| `DeviceType` | MOBILE, TABLET, DESKTOP, WEARABLE | Device classification |
-| `JobStatus` | QUEUED, PROCESSING, COMPLETED, FAILED | Async job states |
-| `ErrorCode` | See section above | Platform errors |
-| `ContentType` | AUDIO, TEXT, VIDEO, DOCUMENT | Content categories |
-| `Priority` | LOW, NORMAL, HIGH, CRITICAL | Request priority |
+| Enum           | Values                                | Purpose               |
+| -------------- | ------------------------------------- | --------------------- |
+| `AudioFormat`  | WAV, MP3, OGG, FLAC, M4A, OPUS        | Audio file types      |
+| `LanguageCode` | en-US, es-MX, zh-Hans, etc.           | BCP-47 language codes |
+| `DeviceType`   | MOBILE, TABLET, DESKTOP, WEARABLE     | Device classification |
+| `JobStatus`    | QUEUED, PROCESSING, COMPLETED, FAILED | Async job states      |
+| `ErrorCode`    | See section above                     | Platform errors       |
+| `ContentType`  | AUDIO, TEXT, VIDEO, DOCUMENT          | Content categories    |
+| `Priority`     | LOW, NORMAL, HIGH, CRITICAL           | Request priority      |
 
 ## Key Concepts
 
 ### Enums vs. Strings
 
 **Without Dictionary (strings):**
+
 ```php
 function setLanguage($lang) {
 	// No type checking; easy to typo
@@ -155,6 +163,7 @@ setLanguage('invalid'); // ✗ no error
 ```
 
 **With Dictionary (enums):**
+
 ```php
 function setLanguage(LanguageCode $lang) {
 	// Type-safe; IDE knows all valid values
@@ -169,7 +178,9 @@ setLanguage('en-US');               // ✗ Type error immediately
 ```
 
 ### Backed Enums
+
 Dictionary uses PHP's "backed enums" — enums with associated values:
+
 ```php
 enum AudioFormat: string {
 	case WAV = 'wav';
@@ -185,9 +196,11 @@ $fmt = AudioFormat::from('mp3');  // AudioFormat::MP3
 ```
 
 ### BCP-47 Language Codes
+
 Format: `language[-script][-region][-variant]`
 
 Examples:
+
 - `en` — English (any region)
 - `en-US` — English (United States)
 - `zh-Hans` — Chinese (Simplified script)
@@ -198,6 +211,7 @@ Dictionary uses full BCP-47 codes to be unambiguous.
 ## Common Integration Patterns
 
 ### Pattern 1: Type-Safe Configuration
+
 ```php
 // Configuration with type safety
 class AudioConfig {
@@ -215,6 +229,7 @@ $config = new AudioConfig(
 ```
 
 ### Pattern 2: Validation Before Sending
+
 ```php
 // Validate before hitting the API
 function transcribe(
@@ -223,13 +238,14 @@ function transcribe(
 ): JobResult {
 	// Convert and validate in one step
 	$lang = LanguageCode::from($languageCode);
-    
+
 	// Now safe to send to transcription service
 	return $esu->transcribe($filePath, $lang);
 }
 ```
 
 ### Pattern 3: Error Handling
+
 ```php
 // Use Dictionary error codes for consistency
 try {
@@ -247,12 +263,16 @@ try {
 ## Important Notes
 
 ### Versioning
+
 Dictionary follows semantic versioning:
+
 - Minor versions add new enums (safe)
 - Major versions remove enums (breaking)
 
 ### Adding New Values
+
 To add a new audio format to Dictionary:
+
 1. Submit PR to `sparxstar-platform-contracts`
 2. Governance review (ensures all services can handle it)
 3. Merge to `sparxstar-platform-contracts`
@@ -260,7 +280,9 @@ To add a new audio format to Dictionary:
 5. All services now know about the new value
 
 ### Case Sensitivity
+
 Enum names are case-sensitive in PHP:
+
 ```php
 LanguageCode::EN_US      // ✓ Correct
 LanguageCode::en_us      // ✗ Fatal error

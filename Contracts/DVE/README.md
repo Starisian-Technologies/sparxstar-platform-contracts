@@ -18,13 +18,13 @@ If your platform serves mobile users, relies on voice as input, or needs to proc
 
 ## At a Glance
 
-| Aspect | Detail |
-|--------|--------|
-| **Status** | Production-ready |
-| **Audience** | Platform integrators, voice-first apps |
+| Aspect           | Detail                                  |
+| ---------------- | --------------------------------------- |
+| **Status**       | Production-ready                        |
+| **Audience**     | Platform integrators, voice-first apps  |
 | **Key Services** | Sky, Sky-Esu, SkyHermes, Dheghom, Mehns |
-| **Dependencies** | Sirus (context), Helios (identity) |
-| **Versioning** | Semantic; breaking changes rare |
+| **Dependencies** | Sirus (context), Helios (identity)      |
+| **Versioning**   | Semantic; breaking changes rare         |
 
 ## Core Functionality
 
@@ -50,6 +50,7 @@ Voice flows through DVE like this:
 7. **Correction** — User can correct the transcription; DVE learns
 
 See the service subdirectories for specific contract details:
+
 - **Sky** — Core voice orchestration and routing
 - **Sky-Esu** — AI-powered transcription and translation
 - **SkyHermes** — High-volume message processing
@@ -91,20 +92,25 @@ If you're maintaining the DVE source repository:
 ## Key Concepts
 
 ### Job IDs
+
 Every async operation returns a UUID v4 `job_id`. Store this to track progress, retrieve results, and cancel if needed.
 
 ### TUS Protocol
+
 DVE uses the TUS (Tushy Upload Server) protocol for audio upload. It's designed for **unreliable networks** — if the connection drops, TUS resumes from where it stopped, not from the beginning.
 
 ### Language Codes
+
 All language parameters use BCP-47 (e.g., `en-US`, `es-MX`, `zh-Hans`). Invalid codes trigger validation errors.
 
 ### Sirus Authority
+
 All DVE operations require Sirus context. Requests without valid Sirus resolution **fail closed** — the system rejects them rather than guessing.
 
 ## Common Integration Patterns
 
 ### Pattern 1: Simple Transcription
+
 1. User speaks into microphone
 2. Browser sends audio to your backend via TUS
 3. Your backend calls `Esu→transcribe()`
@@ -112,6 +118,7 @@ All DVE operations require Sirus context. Requests without valid Sirus resolutio
 5. Display transcription to user
 
 ### Pattern 2: Transcribe + Translate
+
 1. User speaks in Spanish
 2. Call `Esu→transcribeAndTranslate(audioPath, es-MX, en-US, ...)`
 3. Get back job_id
@@ -119,6 +126,7 @@ All DVE operations require Sirus context. Requests without valid Sirus resolutio
 5. Show translated text
 
 ### Pattern 3: Batch Processing
+
 1. Multiple users upload audio simultaneously
 2. Each gets a job_id
 3. DVE processes them concurrently in the background
@@ -127,15 +135,19 @@ All DVE operations require Sirus context. Requests without valid Sirus resolutio
 ## Important Notes
 
 ### Versioning
+
 DVE follows semantic versioning. **Breaking changes** (e.g., parameter renames, new required parameters) are rare and always documented. Minor updates add features without breaking compatibility.
 
 ### Network Awareness
+
 DVE is **explicitly designed for 2G/3G networks and unreliable connections**. TUS upload never resumes from zero. Jobs are stored durably. Expect latency, but expect resilience.
 
 ### Storage of Corrections
+
 When users correct transcriptions, those corrections are stored in the **CorrectionStore**. This data may be used for quality improvement. Check your jurisdiction's data retention laws.
 
 ### Security
+
 - All requests must have valid **Helios identity**
 - All requests must resolve valid **Sirus context**
 - Audio files are processed securely; don't assume they're deleted immediately
@@ -156,4 +168,3 @@ When users correct transcriptions, those corrections are stored in the **Correct
 ---
 
 **Governed by:** Starisian Technologies | **Licensed:** GPL-2.0-or-later | **Updated:** 2026-06-16
-

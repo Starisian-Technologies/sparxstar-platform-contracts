@@ -26,17 +26,18 @@ Modern fraud happens silently. Sirus gives you visibility.
 
 ## At a Glance
 
-| Aspect | Detail |
-|--------|--------|
-| **Purpose** | Device context and request authority |
-| **Input** | HTTP request, device info, network metrics |
-| **Output** | Device fingerprint, trust score, authority verdict |
-| **Consumers** | All platform services |
-| **Part Of** | IAMC (Identity, Auth, Messaging & Context) |
+| Aspect        | Detail                                             |
+| ------------- | -------------------------------------------------- |
+| **Purpose**   | Device context and request authority               |
+| **Input**     | HTTP request, device info, network metrics         |
+| **Output**    | Device fingerprint, trust score, authority verdict |
+| **Consumers** | All platform services                              |
+| **Part Of**   | IAMC (Identity, Auth, Messaging & Context)         |
 
 ## Core Capabilities
 
 ### Device Fingerprinting
+
 - **Hardware characteristics** — CPU, GPU, screen resolution
 - **Browser/OS fingerprint** — OS version, browser type, plugins
 - **Network characteristics** — ISP, subnet, connection type
@@ -44,18 +45,21 @@ Modern fraud happens silently. Sirus gives you visibility.
 - **History tracking** — "Have we seen this device before?"
 
 ### Authority Enforcement
+
 - **Location-based rules** — Allow/deny based on geographic location
 - **Time-based rules** — Flag requests outside normal hours
 - **Risk rules** — Escalate for high-risk behaviors
 - **Custom policies** — Define your own authority rules
 
 ### Trust Scoring
+
 - **0-100 score** — 0 = untrusted, 100 = highly trusted
 - **Multi-factor input** — Device history, location, behavior, time
 - **Continuous assessment** — Score updated as request progresses
 - **Adaptive thresholds** — Different thresholds for different operations
 
 ### Anomaly Detection
+
 - **Impossible travel** — Request from NYC then Tokyo in 30 minutes
 - **New device** — Device never seen from this user before
 - **VPN/Proxy** — Detect attempts to hide origin
@@ -151,6 +155,7 @@ $sirus->setPolicy($userId, $policy);
 ### Trust Scores
 
 **Factors that increase trust (0-100):**
+
 - Device seen many times before (+30)
 - Within known geographic region (+20)
 - During normal hours (+15)
@@ -158,6 +163,7 @@ $sirus->setPolicy($userId, $policy);
 - Stable network (+10)
 
 **Factors that decrease trust:**
+
 - New device (-50)
 - Geographic impossibility (-100)
 - VPN/Proxy detected (-30)
@@ -165,6 +171,7 @@ $sirus->setPolicy($userId, $policy);
 - Multiple failed auth attempts (-15)
 
 **Using the score:**
+
 - 80-100: Allow without challenge
 - 50-79: Require step-up auth (MFA, verification question)
 - 0-49: Require strong auth (MFA + device verification)
@@ -173,18 +180,21 @@ $sirus->setPolicy($userId, $policy);
 ### Context Layers
 
 **Network Context**
+
 - ISP and ASN (Autonomous System Number)
 - Geographic location (GeoIP)
 - Connection stability
 - Proxy/VPN detection
 
 **Device Context**
+
 - OS and version
 - Browser fingerprint
 - Hardware characteristics
 - Installed apps (if mobile)
 
 **Behavioral Context**
+
 - Request timing patterns
 - Request volume patterns
 - Device combinations (does user switch between devices?)
@@ -193,6 +203,7 @@ $sirus->setPolicy($userId, $policy);
 ### Fail-Closed Philosophy
 
 Sirus defaults to **caution**:
+
 - New device? Challenge.
 - Impossible travel? Deny.
 - Unknown context? Challenge.
@@ -202,6 +213,7 @@ It's better to inconvenience a legitimate user with MFA than to let a hacker pro
 ## Common Integration Patterns
 
 ### Pattern 1: Transparent Security
+
 ```
 1. User logs in from laptop
 2. Device recognized and trusted
@@ -210,6 +222,7 @@ It's better to inconvenience a legitimate user with MFA than to let a hacker pro
 ```
 
 ### Pattern 2: MFA Challenge on New Device
+
 ```
 1. User logs in from new phone
 2. Sirus detects new device
@@ -220,6 +233,7 @@ It's better to inconvenience a legitimate user with MFA than to let a hacker pro
 ```
 
 ### Pattern 3: Geographic Anomaly
+
 ```
 1. User in NYC makes request
 2. 30 minutes later, request from Tokyo
@@ -230,6 +244,7 @@ It's better to inconvenience a legitimate user with MFA than to let a hacker pro
 ```
 
 ### Pattern 4: Adaptive Risk Rules
+
 ```
 1. High-value operation (money transfer)
 2. Sirus checks trust score
@@ -241,26 +256,32 @@ It's better to inconvenience a legitimate user with MFA than to let a hacker pro
 ## Important Notes
 
 ### Versioning
+
 Sirus follows semantic versioning. Breaking changes are rare and documented.
 
 ### Performance Impact
+
 Sirus adds typical latency of **50-200ms** depending on:
+
 - Device history lookup
 - Anomaly detection complexity
 - Network context resolution
 
 Optimize by:
+
 - Caching device fingerprints (1 hour)
 - Batching context queries
 - Using async anomaly detection for non-critical paths
 
 ### Privacy Considerations
+
 - Device fingerprints are hashed; original data not stored
 - Behavioral patterns are aggregated; not individual actions
 - Location data is generalized (city-level, not street-level)
 - User can opt out of certain tracking (affects trust score)
 
 ### Compliance
+
 - **GDPR**: Transparent about what data is collected
 - **CCPA**: User can request device fingerprint deletion
 - **SOC2**: Audit logs of all Sirus decisions
