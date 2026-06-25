@@ -35,9 +35,13 @@ on:
   workflow_call:
     inputs:
       contract-ref:
-        description: "Pinned registry ref the consumer has adopted (e.g. v1.0.0). Checked, not main."
+        description: >
+          Pinned registry ref the consumer has adopted (e.g. v1.0.0). Checked, not main.
+          If omitted, it is derived from the @<ref> on the uses: line (GITHUB_WORKFLOW_REF).
+          Explicit always wins — set it if you care which contract version runs.
         type: string
-        required: true
+        required: false
+        default: ""
       contracts:
         description: "Space/comma list of MANIFEST contract ids to check. Empty = all the consumer is party to."
         type: string
@@ -74,6 +78,27 @@ jobs:
   fetch-contract:
     runs-on: ubuntu-latest
     steps:
+      # Resolve the contract ref the same way the proven ADR gate does: explicit
+      # input wins; otherwise parse the @<ref> the reusable workflow was called at
+      # from GITHUB_WORKFLOW_REF (github.action_ref is unreliable for reusable workflows).
+      - name: Resolve pinned ref
+        id: ref
+        env:
+          INPUT_REF: ${{ inputs.contract-ref }}
+        run: |
+          if [ -n "$INPUT_REF" ]; then
+            RESOLVED="$INPUT_REF"; SOURCE="explicit-input"
+          else
+            RESOLVED="${GITHUB_WORKFLOW_REF##*@}"; SOURCE="GITHUB_WORKFLOW_REF"
+          fi
+          RESOLVED="${RESOLVED#refs/tags/}"
+          RESOLVED="${RESOLVED#refs/heads/}"
+          if [ -z "$RESOLVED" ]; then
+            echo "::error::Could not determine contract ref. Set contract-ref explicitly."; exit 1
+          fi
+          echo "ref=$RESOLVED" >> "$GITHUB_OUTPUT"
+          echo "Resolved contract ref: $RESOLVED (source: $SOURCE)"
+
       - name: Mint composer-resolver READ token
         id: read-token
         uses: actions/create-github-app-token@v3
@@ -87,7 +112,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: Starisian-Technologies/sparxstar-platform-contracts
-          ref: ${{ inputs.contract-ref }}
+          ref: ${{ steps.ref.outputs.ref }}
           token: ${{ steps.read-token.outputs.token }}
           persist-credentials: false
           fetch-depth: 0
@@ -96,7 +121,7 @@ jobs:
 
       - name: Fetch pinned contract + stage trusted assertion script
         env:
-          CONTRACT_REF: ${{ inputs.contract-ref }}
+          CONTRACT_REF: ${{ steps.ref.outputs.ref }}
           REQUESTED_CONTRACTS: ${{ inputs.contracts }}
           CONSUMER: ${{ inputs.consumer != '' && inputs.consumer || github.repository }}
           OUT_DIR: ${{ github.workspace }}/artifact/contracts

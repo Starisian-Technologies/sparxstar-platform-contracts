@@ -87,37 +87,46 @@ jobs:
           rec="$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)"
           echo "recommended=${rec}" >> "$GITHUB_OUTPUT"
 
-      - name: Mint contract-sync WRITE token (scoped to consumer repos)
-        id: write-token
+      # Token: composer-resolver, scoped to the target consumer repos. This MATCHES
+      # the live governance adr-dispatch.yml, which mints composer-resolver (NOT
+      # contract-sync) for the cross-repo repository_dispatch — the App's install on
+      # the consumer repos carries the dispatch permission. Read from live source,
+      # overriding the task's earlier contract-sync assumption (RULE ZERO).
+      - name: Mint composer-resolver token (scoped to consumer repos)
+        id: app-token
         if: steps.resolve.outputs.has_consumers == 'true'
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ vars.CONTRACT_SYNC_CLIENT_ID }}
-          private-key: ${{ secrets.CONTRACT_SYNC_PRIVATE_KEY }}
+          client-id: ${{ vars.COMPOSER_RESOLVER_CLIENT_ID }}
+          private-key: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
           owner: Starisian-Technologies
           repositories: ${{ steps.resolve.outputs.repositories }}
 
       - name: Dispatch contract-changed to each consumer
         if: steps.resolve.outputs.has_consumers == 'true'
         env:
-          GH_TOKEN: ${{ steps.write-token.outputs.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           CONSUMERS: ${{ steps.resolve.outputs.consumers }}
           CHANGED: ${{ steps.resolve.outputs.changed }}
           RECOMMENDED: ${{ steps.ver.outputs.recommended }}
           REGISTRY: ${{ github.repository }}
           SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
         run: |
           set -euo pipefail
-          payload="$(jq -n \
-            --argjson contracts "$CHANGED" \
-            --arg registry "$REGISTRY" \
-            --arg recommended "$RECOMMENDED" \
-            --arg sha "$SHA" \
-            '{registry:$registry, contracts:$contracts, recommended:$recommended, sha:$sha}')"
           echo "$CONSUMERS" | jq -r '.[]' | while read -r consumer; do
             echo "Dispatching contract-changed -> ${consumer}"
-            gh api --method POST "repos/${consumer}/dispatches" \
-              -f event_type=contract-changed \
-              --raw-field "client_payload=${payload}" \
+            # Build the full dispatch body so client_payload is a real JSON object
+            # (not a string), then POST it via --input -.
+            jq -n \
+              --argjson contracts "$CHANGED" \
+              --arg registry "$REGISTRY" \
+              --arg recommended "$RECOMMENDED" \
+              --arg sha "$SHA" \
+              --arg ref "$REF" \
+              '{event_type:"contract-changed",
+                client_payload:{registry:$registry, contracts:$contracts,
+                                recommended:$recommended, sha:$sha, ref:$ref}}' \
+            | gh api --method POST "repos/${consumer}/dispatches" --input - \
               || echo "::warning::dispatch to ${consumer} failed (App not installed or no permission?)"
           done

@@ -1,0 +1,90 @@
+name: Publish Contract Release
+
+# Mirror of the governance registry's publish-contract.yml, adapted for this repo's
+# PHP contract tree. On a vX.Y.Z tag push, package the canonical contracts + the
+# authoritative index + the fetch/conformance scripts into a GitHub Release.
+#
+# This is the release half of registry-first sequencing: tag @vX.Y.Z (immutable) and
+# @vX (alias) on the same commit, publish, then consumers swap their pin.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Determine tag name
+        id: tag
+        run: echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Compile contract artifacts into dist/
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # Bundle the canonical contract tree + index + policy + the scripts a
+          # consumer needs to fetch and check conformance.
+          tar -czf "dist/contracts-${TAG}.tar.gz" \
+            Contracts MANIFEST.json config/version-policy.yml \
+            scripts/fetch-contracts.sh scripts/contract-conformance.php
+          cp MANIFEST.json dist/MANIFEST.json
+          echo "$TAG" > dist/VERSION
+          ls -la dist/
+
+      - name: Write CHANGELOG entry
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
+        run: |
+          set -euo pipefail
+          n_contracts="$(jq '.contracts | length' MANIFEST.json)"
+          {
+            echo "# Changelog"
+            echo
+            echo "## ${TAG} — $(date -u +%Y-%m-%d)"
+            echo
+            echo "Contracts indexed: ${n_contracts}"
+            echo
+            echo "See MANIFEST.json for the authoritative index and consumer bindings."
+          } > dist/CHANGELOG.md
+
+      - name: Create GitHub Release and upload artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.name }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            --title "Contract Release $TAG" \
+            --notes "SPARXSTAR platform contracts for $TAG.
+
+          ## Artifacts
+          - \`contracts-$TAG.tar.gz\` — canonical contract tree + MANIFEST.json + version-policy.yml + scripts
+          - \`MANIFEST.json\` — authoritative index and consumer bindings
+          - \`CHANGELOG.md\` / \`VERSION\`
+
+          ## Usage in consuming repos
+          Pin the conformance gate at @$TAG and pass your COMPOSER_RESOLVER_PRIVATE_KEY
+          secret. See templates/calling-repo/ci-with-contracts.yml for a copy-paste caller.
+          " \
+            "dist/contracts-$TAG.tar.gz" \
+            dist/MANIFEST.json \
+            dist/CHANGELOG.md \
+            dist/VERSION \
+          || echo "Release may already exist; uploading artifacts only."
+
+          gh release upload "$TAG" \
+            "dist/contracts-$TAG.tar.gz" \
+            dist/MANIFEST.json \
+            dist/CHANGELOG.md \
+            dist/VERSION \
+            --clobber

@@ -1,0 +1,21 @@
+{
+  "$comment": [
+    "Drop this at .claude/settings.json in YOUR consumer repo. It scopes an agent",
+    "working in the consumer to the contracts workflow: it may pull contracts and run",
+    "conformance, but must never edit a pulled contract (those are DO-NOT-EDIT copies)",
+    "nor commit the fetched artifact. To change a contract, propose it into the registry."
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(gh run download:*)",
+      "Bash(php *contract-conformance.php*)",
+      "Read(./.contracts/**)"
+    ],
+    "deny": [
+      "Edit(./.contracts/**)",
+      "Write(./.contracts/**)",
+      "Edit(./fetched/**)",
+      "Write(./fetched/**)"
+    ]
+  }
+}

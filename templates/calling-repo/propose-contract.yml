@@ -1,0 +1,57 @@
+# Consumer-side: propose a contract change INTO the registry.
+#
+# Copy to .github/workflows/propose-contract.yml in YOUR (product) repo.
+#
+# The product repo writes the contract (it knows the code); the registry OWNS it.
+# This opens a draft PR in the registry. The registry owner reviews and merges —
+# this never merges and never promotes status to canonical/ratified.
+#
+# Trigger manually (or wire to a push on your contract source). You render the
+# proposed contract file content and pass it through.
+name: Propose contract update
+
+on:
+  workflow_dispatch:
+    inputs:
+      product:
+        description: "MANIFEST contract key (e.g. iamc/helios)"
+        required: true
+      contract-path:
+        description: "Registry path to the file (e.g. Contracts/IAMC/Helios/Contracts/SPXHeliosClientInterface.php)"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    outputs:
+      content: ${{ steps.render.outputs.content }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Render proposed contract content
+        id: render
+        env:
+          SRC: ${{ github.event.inputs.contract-path }}
+        run: |
+          # Point SRC at the file in YOUR repo that is the source of truth for this
+          # contract. Here we assume it lives at the same relative path; adjust as needed.
+          {
+            echo "content<<__CONTRACT_EOF__"
+            cat "${SRC#Contracts/}" 2>/dev/null || cat "$SRC"
+            echo "__CONTRACT_EOF__"
+          } >> "$GITHUB_OUTPUT"
+
+  propose:
+    needs: render
+    uses: Starisian-Technologies/sparxstar-platform-contracts/.github/workflows/propose-contract.yml@v1.0.0
+    with:
+      product: ${{ github.event.inputs.product }}
+      contract-path: ${{ github.event.inputs.contract-path }}
+      contract-content: ${{ needs.render.outputs.content }}
+      status: review                       # NEVER canonical/ratified — the owner promotes
+      source-repo: ${{ github.repository }}
+      source-sha: ${{ github.sha }}
+    secrets:
+      CONTRACT_SYNC_PRIVATE_KEY: ${{ secrets.CONTRACT_SYNC_PRIVATE_KEY }}

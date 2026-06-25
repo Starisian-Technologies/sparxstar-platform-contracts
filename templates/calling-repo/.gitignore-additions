@@ -1,0 +1,8 @@
+# --- SPARXSTAR contracts: never commit a pulled contract ---
+# Consumers pull the contract fresh every run from the registry. A committed copy
+# is a stale copy. Keep these out of version control.
+.contracts/
+fetched/
+fetched-contracts/
+bundle/
+*.fetched-manifest.json
