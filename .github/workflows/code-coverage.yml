@@ -1,0 +1,27 @@
+name: Code Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# This repository is a contracts registry — PHP interfaces, enums, and value-object
+# declarations with no runtime behavior to instrument. There is nothing to cover with
+# line/branch coverage. What MATTERS here is structural conformance, which is enforced
+# elsewhere:
+#   - validate-contracts.yml  — the contract files themselves are well-formed (registry side)
+#   - contract-conformance.yml — consumers' code honors the contract (consumer side)
+# This check passes unconditionally so it is green without noise.
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: No runtime code to cover
+        run: |
+          echo "Contracts registry contains interface/enum/value-object declarations only."
+          echo "Coverage: N/A. Structural conformance is enforced by validate-contracts.yml"
+          echo "and contract-conformance.yml. Passing unconditionally."

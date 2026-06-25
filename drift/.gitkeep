@@ -1,0 +1,2 @@
+# Consumer drift reports land here as <owner>-<repo>.json (written by
+# fetch-contracts.yml's opt-in report-drift). collect-drift.yml rebuilds INDEX.md.

@@ -1,0 +1,175 @@
+# fetch-contracts.yml — DISTRIBUTION (the pull-fresh mechanism)
+#
+# Reusable workflow. Consumers call it on every run to pull a fresh copy of the
+# contract(s) they are party to. They never store a contract locally; the only
+# canonical source is this registry at the pinned contract-ref.
+#
+# Twin of the spec registry's fetch-specs.yml. Mirrors: three-ref model
+# (agent-ref / contract-ref / release-ref), MANIFEST.json-driven path
+# resolution, version-policy floor + runtime-resolved recommended +
+# v3-bug guard, canonical/ratified binding filter, DO-NOT-EDIT header
+# injection, artifact upload (retention 1 day), and an optional
+# drift-report-back that is the only write this workflow ever performs.
+#
+# CAVEAT (no live read of fetch-specs.yml this session): structure and identifiers
+# are built from the task instructions, not copied from the live file. Verify the
+# input names / token wiring against the spec registry's fetch-specs.yml before tagging.
+name: fetch-contracts
+
+on:
+  workflow_call:
+    inputs:
+      agent-ref:
+        description: "Informational ref of the calling agent/context (logged, not used for resolution)."
+        type: string
+        required: false
+        default: ""
+      contract-ref:
+        description: "Registry ref to pull contracts from. Pin to an immutable tag, e.g. v1.0.0."
+        type: string
+        required: true
+      release-ref:
+        description: "Release tag/ref of the consumer's release context (informational)."
+        type: string
+        required: false
+        default: ""
+      contracts:
+        description: "Space/comma list of MANIFEST contract ids to fetch. Empty = all the caller is party to."
+        type: string
+        required: false
+        default: ""
+      consumer:
+        description: "owner/repo of the calling consumer. Restricts fetch to contracts that bind this repo. Defaults to the caller."
+        type: string
+        required: false
+        default: ""
+      report-drift:
+        description: "When true, report drift back to the registry using the contract-sync write token."
+        type: boolean
+        required: false
+        default: false
+      report-gate:
+        description: "Consumer enforcement posture recorded in the drift report (advisory|gate). Display-only."
+        type: string
+        required: false
+        default: "advisory"
+      artifact-name:
+        description: "Name of the uploaded contract artifact."
+        type: string
+        required: false
+        default: "fetched-contracts"
+    secrets:
+      COMPOSER_RESOLVER_PRIVATE_KEY:
+        description: "Private key for the composer-resolver READ App. Required."
+        required: true
+      CONTRACT_SYNC_PRIVATE_KEY:
+        description: "Private key for the contract-sync WRITE App. Required ONLY when report-drift is true."
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mint composer-resolver READ token
+        id: read-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.COMPOSER_RESOLVER_CLIENT_ID }}
+          private-key: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
+          owner: Starisian-Technologies
+          repositories: sparxstar-platform-contracts
+
+      # The checkout is restricted to THIS registry (repository: is hardcoded) using
+      # our minted token, so a caller can only select refs that already exist in the
+      # registry — they cannot inject arbitrary code. persist-credentials: false keeps
+      # the token out of the local git config of the checked-out tree.
+      - name: Checkout registry at contract-ref
+        uses: actions/checkout@v7
+        with:
+          repository: Starisian-Technologies/sparxstar-platform-contracts
+          ref: ${{ inputs.contract-ref }}
+          token: ${{ steps.read-token.outputs.token }}
+          persist-credentials: false
+          fetch-depth: 0
+          fetch-tags: true
+          path: registry
+
+      # All caller-controlled values are passed through env (never interpolated into
+      # the run: script) to avoid shell/script injection (CodeQL js/code-injection).
+      - name: Resolve, version-check and fetch contracts
+        id: fetch
+        env:
+          AGENT_REF: ${{ inputs.agent-ref }}
+          RELEASE_REF: ${{ inputs.release-ref }}
+          CONTRACT_REF: ${{ inputs.contract-ref }}
+          REQUESTED_CONTRACTS: ${{ inputs.contracts }}
+          CONSUMER: ${{ inputs.consumer != '' && inputs.consumer || github.repository }}
+          OUT_DIR: ${{ github.workspace }}/fetched
+          REGISTRY: Starisian-Technologies/sparxstar-platform-contracts
+        run: |
+          printf 'agent-ref:    %s\n' "$AGENT_REF"
+          printf 'contract-ref: %s\n' "$CONTRACT_REF"
+          printf 'release-ref:  %s\n' "$RELEASE_REF"
+          bash registry/scripts/fetch-contracts.sh
+          echo "out-dir=${OUT_DIR}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload contract artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ steps.fetch.outputs.out-dir }}
+          retention-days: 1
+          if-no-files-found: error
+
+      # ----------------------------------------------------------------------
+      # OPTIONAL drift report-back — the ONLY write this workflow performs.
+      # Mints the contract-sync WRITE token and commits a drift report into
+      # drift/*.json in the registry. Skipped unless report-drift is true.
+      # ----------------------------------------------------------------------
+      - name: Mint contract-sync WRITE token
+        id: write-token
+        if: ${{ inputs.report-drift }}
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CONTRACT_SYNC_CLIENT_ID }}
+          private-key: ${{ secrets.CONTRACT_SYNC_PRIVATE_KEY }}
+          owner: Starisian-Technologies
+          repositories: sparxstar-platform-contracts
+
+      # All caller-controlled values flow through env, never interpolated into run:.
+      # The JSON keys here MUST match what collect-drift.yml consumes:
+      # caller_repo / contract_ref / resolved / recommended / tier / gate.
+      - name: Report drift back to registry
+        if: ${{ inputs.report-drift }}
+        env:
+          GH_TOKEN: ${{ steps.write-token.outputs.token }}
+          CALLER_REPO: ${{ github.repository }}
+          REPORT_GATE: ${{ inputs.report-gate }}
+          OUT_DIR: ${{ github.workspace }}/fetched
+          REGISTRY: Starisian-Technologies/sparxstar-platform-contracts
+        run: |
+          set -euo pipefail
+          slug="$(printf '%s' "$CALLER_REPO" | tr '/' '-')"
+          meta="${OUT_DIR}/version-meta.json"
+          report="$(jq -n \
+            --arg caller_repo "$CALLER_REPO" \
+            --arg gate "$REPORT_GATE" \
+            --slurpfile m "$meta" \
+            '{caller_repo:$caller_repo,
+              contract_ref: $m[0].contract_ref,
+              resolved:     $m[0].resolved,
+              recommended:  $m[0].recommended,
+              tier:         $m[0].tier,
+              gate:         $gate}')"
+          existing_sha="$(gh api "repos/${REGISTRY}/contents/drift/${slug}.json" --jq .sha 2>/dev/null || true)"
+          gh api \
+            --method PUT \
+            "repos/${REGISTRY}/contents/drift/${slug}.json" \
+            -f message="chore: drift report from ${CALLER_REPO}" \
+            -f "content=$(printf '%s' "$report" | base64 -w0)" \
+            -f branch="main" \
+            ${existing_sha:+-f "sha=${existing_sha}"} \
+            || echo "::warning::drift report-back failed (non-fatal)"
