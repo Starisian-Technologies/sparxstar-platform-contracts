@@ -1,0 +1,91 @@
+name: Validate Contracts
+
+# Runs on every PR to main when contract files change.
+# Validates the structural invariants of canonical contract files (the registry side).
+# This is the gate propose-contract.yml PRs must pass before an owner merges.
+#
+# ESCALATING VALIDATION RULES (mirrors validate-specs.yml, by MANIFEST status):
+#   All contracts:
+#     - every .php must declare strict_types        → FAIL if not
+#     - every .php must declare a namespace         → FAIL if not
+#   Binding contracts (status: canonical | ratified):
+#     - every .php must be an interface/enum/class  → FAIL if not
+#     - the contract path must exist                → FAIL if missing
+#   Non-binding contracts (status: draft | review):
+#     - the above become WARN (not blocking)
+#   All contracts (documentation signal, never blocking):
+#     - missing @since tag                          → WARN
+#       (Sky-Esu interfaces use a different header convention; @since is advisory.)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "Contracts/**"
+      - "MANIFEST.json"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate contract structure
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, re, sys, glob
+
+          BINDING = {"canonical", "ratified"}
+
+          with open("MANIFEST.json") as f:
+              manifest = json.load(f)
+
+          contracts = manifest.get("contracts", {})
+          if not contracts:
+              print("No contracts in MANIFEST.json — nothing to validate.")
+              sys.exit(0)
+
+          print(f"{'Contract':<22} {'Status':<10} {'Gate':<6} Notes")
+          print("-" * 100)
+
+          all_passed = True
+
+          for key, c in sorted(contracts.items()):
+              status   = (c.get("status") or "").lower()
+              path     = c.get("path", "")
+              binding  = status in BINDING
+              hard, warn = [], []
+
+              if not path or not os.path.isdir(path):
+                  msg = f"path '{path}' does not exist"
+                  (hard if binding else warn).append(msg)
+                  files = []
+              else:
+                  files = sorted(glob.glob(os.path.join(path, "**", "*.php"), recursive=True))
+
+              for fp in files:
+                  text = open(fp, encoding="utf-8").read()
+                  rel  = os.path.relpath(fp)
+                  if "declare(strict_types=1)" not in text.replace(" ", ""):
+                      hard.append(f"{rel}: missing strict_types")  # strict_types is hard for ALL statuses
+                  if not re.search(r"^namespace\s+", text, re.MULTILINE):
+                      hard.append(f"{rel}: missing namespace")
+                  has_type = re.search(r"\b(interface|enum|trait|(?:final\s+|abstract\s+)?class)\s+\w+", text)
+                  if not has_type:
+                      (hard if binding else warn).append(f"{rel}: not an interface/enum/class")
+                  if "@since" not in text:
+                      warn.append(f"{rel}: missing @since")  # advisory only — never blocks
+
+              gate = "FAIL" if hard else ("WARN" if warn else "PASS")
+              notes = "; ".join(hard) if hard else ("WARN: " + "; ".join(warn[:2]) if warn else "ok")
+              print(f"{key:<22} {status:<10} {gate:<6} {notes}")
+              if hard:
+                  all_passed = False
+
+          print()
+          if all_passed:
+              print("All binding contracts passed validation (warnings are non-blocking).")
+          else:
+              print("ERROR: one or more binding contracts failed validation.")
+              sys.exit(1)
+          PYEOF

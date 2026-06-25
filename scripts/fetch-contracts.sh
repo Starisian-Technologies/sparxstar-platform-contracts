@@ -36,13 +36,14 @@ MANIFEST="MANIFEST.json"
 POLICY="config/version-policy.yml"
 
 command -v jq >/dev/null 2>&1 || { echo "::error::jq is required"; exit 1; }
+sort -V </dev/null >/dev/null 2>&1 || { echo "::error::GNU sort (with -V) is required. On macOS: 'brew install coreutils' and use gsort, or run in a GNU environment."; exit 1; }
 [[ -f "$MANIFEST" ]] || { echo "::error::$MANIFEST not found at $CONTRACT_REF"; exit 1; }
 [[ -f "$POLICY" ]]   || { echo "::error::$POLICY not found at $CONTRACT_REF"; exit 1; }
 
 # ---------------------------------------------------------------------------
 # 1. Version policy: floor + recommended + v3-bug guard.
 # ---------------------------------------------------------------------------
-floor="$(grep -E '^[[:space:]]*floor:' "$POLICY" | head -1 | sed -E 's/^[[:space:]]*floor:[[:space:]]*//; s/[[:space:]]*(#.*)?$//' | tr -d '"'\''')"
+floor="$(grep -E '^[[:space:]]*floor:' "$POLICY" | head -n 1 | sed -E 's/^[[:space:]]*floor:[[:space:]]*//; s/[[:space:]]*(#.*)?$//' | tr -d "\"'" || true)"
 [[ -n "$floor" ]] || { echo "::error::no floor in $POLICY"; exit 1; }
 
 # Highest real semver tag in the repo, resolved at runtime, is the recommended pin.
@@ -71,7 +72,23 @@ if [[ -n "$ref_tag" && "$ref_tag" =~ ^v[0-9] ]]; then
   fi
 fi
 
-echo "Version policy: floor=${floor} recommended=${recommended:-<none>} requested=${CONTRACT_REF}"
+# Resolved object + version tier (used by the optional drift report-back, whose
+# JSON must match what collect-drift.yml consumes: resolved / recommended / tier).
+resolved="$(git rev-parse --short "${CONTRACT_REF}^{commit}")"
+if [[ -z "$ref_tag" ]]; then
+  tier="unpinned"
+elif [[ -n "$recommended" && "$ref_tag" == "$recommended" ]]; then
+  tier="current"
+elif [[ "$ref_tag" == "$floor" ]]; then
+  tier="floor"
+elif [[ -n "$recommended" ]]; then
+  newest="$(printf '%s\n%s\n' "$ref_tag" "$recommended" | sort -V | tail -1)"
+  if [[ "$newest" == "$recommended" ]]; then tier="behind"; else tier="ahead"; fi
+else
+  tier="pinned"
+fi
+
+echo "Version policy: floor=${floor} recommended=${recommended:-<none>} requested=${CONTRACT_REF} resolved=${resolved} tier=${tier}"
 
 # ---------------------------------------------------------------------------
 # 2. Resolve which contracts to fetch (binding filter + request + consumer).
@@ -108,18 +125,38 @@ fi
 # ---------------------------------------------------------------------------
 mkdir -p "$OUT_DIR"
 fetched_json="$OUT_DIR/fetched-manifest.json"
-echo '{"registry":"'"$REGISTRY"'","contract_ref":"'"$CONTRACT_REF"'","recommended":"'"${recommended:-}"'","floor":"'"$floor"'","contracts":[]}' > "$fetched_json"
+# Build JSON with jq (safe escaping) rather than manual string interpolation.
+jq -n \
+  --arg registry "$REGISTRY" \
+  --arg contract_ref "$CONTRACT_REF" \
+  --arg resolved "$resolved" \
+  --arg recommended "${recommended:-}" \
+  --arg floor "$floor" \
+  --arg tier "$tier" \
+  '{registry:$registry, contract_ref:$contract_ref, resolved:$resolved, recommended:$recommended, floor:$floor, tier:$tier, contracts:[]}' \
+  > "$fetched_json"
+
+# Version metadata for the optional drift report-back (keys collect-drift.yml reads).
+jq -n \
+  --arg contract_ref "$CONTRACT_REF" \
+  --arg resolved "$resolved" \
+  --arg recommended "${recommended:-}" \
+  --arg floor "$floor" \
+  --arg tier "$tier" \
+  '{contract_ref:$contract_ref, resolved:$resolved, recommended:$recommended, floor:$floor, tier:$tier}' \
+  > "$OUT_DIR/version-meta.json"
 
 inject_header() {
   local file="$1" id="$2"
   local tmp
-  tmp="$(mktemp)"
   case "$file" in
     *.php)
-      # Insert the header right after the opening <?php tag if present.
-      if head -1 "$file" | grep -q '<?php'; then
+      # Preserve the ENTIRE first line (it may be "<?php declare(strict_types=1);")
+      # and insert the banner right after it. Only matched files allocate a temp file.
+      if head -n 1 "$file" | grep -q '<?php'; then
+        tmp="$(mktemp)"
         {
-          echo '<?php'
+          head -n 1 "$file"
           cat <<EOF
 /**
  * DO NOT EDIT — fetched from ${REGISTRY}@${CONTRACT_REF} (contract: ${id}).
@@ -134,14 +171,12 @@ EOF
       fi
       ;;
     *.md)
+      tmp="$(mktemp)"
       {
         echo "<!-- DO NOT EDIT — fetched from ${REGISTRY}@${CONTRACT_REF} (contract: ${id}). Propose changes in the registry; do not edit this pulled copy. -->"
         cat "$file"
       } > "$tmp"
       mv "$tmp" "$file"
-      ;;
-    *)
-      rm -f "$tmp"
       ;;
   esac
 }
@@ -151,6 +186,7 @@ for row in "${selected[@]}"; do
   [[ -d "$path" ]] || { echo "::error::contract '${id}' path '${path}' missing at ${CONTRACT_REF}"; exit 1; }
   dest="$OUT_DIR/$path"
   mkdir -p "$(dirname "$dest")"
+  rm -rf "$dest"          # avoid cp -R nesting copies into a pre-existing dest
   cp -R "$path" "$dest"
   while IFS= read -r -d '' f; do
     inject_header "$f" "$id"

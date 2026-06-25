@@ -1,0 +1,295 @@
+name: Propose Contract Update
+
+# Reusable workflow — product repos call this to propose a contract update in the registry.
+#
+# The product repo writes the contract (it knows the code).
+# The registry owns the contract (that is where truth lives).
+# This workflow is the boundary: it opens a PR so the registry owner can review
+# before anything becomes canonical.
+#
+# A contract is not truth until the registry merges the PR.
+#
+# CALLING REPO USAGE
+#
+#   jobs:
+#     propose-contract:
+#       uses: Starisian-Technologies/sparxstar-platform-contracts/.github/workflows/propose-contract.yml@v1.0.0
+#       with:
+#         product: iamc/helios
+#         contract-path: Contracts/IAMC/Helios/Contracts/SPXHeliosClientInterface.php
+#         contract-content: ${{ steps.render-contract.outputs.content }}
+#         status: review
+#         source-repo: ${{ github.repository }}
+#         source-sha: ${{ github.sha }}
+#       secrets:
+#         CONTRACT_SYNC_PRIVATE_KEY: ${{ secrets.CONTRACT_SYNC_PRIVATE_KEY }}
+#
+# WHAT HAPPENS
+#   1. A branch `contract-proposal/{product}/{short-sha}` is created in the registry.
+#   2. The proposed contract content is written to the path (under the product's MANIFEST path).
+#   3. A PR is opened against main titled "contract: {product} update from {source-repo}@{sha}".
+#   4. The registry owner reviews and merges when the proposal is accepted.
+#
+# WHAT THIS WORKFLOW DOES NOT DO
+#   - It does not merge. Only the registry owner merges.
+#   - It does not promote status to canonical/ratified. That is the owner's decision.
+#
+# STATUS IN THE PROPOSAL
+#   Contracts carry status in MANIFEST.json, not in the file. A product proposing
+#   new or changed content must pass status: review (or lower) — NOT canonical/ratified.
+#   The contract becomes canonical only when the registry owner promotes it after review.
+
+on:
+  workflow_call:
+    inputs:
+      product:
+        description: >
+          Contract key — must match a key in MANIFEST.json
+          (e.g. "iamc/helios", "dve/sky-esu").
+        required: true
+        type: string
+      contract-path:
+        description: >
+          Path in the registry where the contract file lives
+          (e.g. "Contracts/IAMC/Helios/Contracts/SPXHeliosClientInterface.php").
+          Must sit under the product's MANIFEST path. If empty, resolved from MANIFEST.json.
+        required: false
+        type: string
+        default: ""
+      contract-content:
+        description: >
+          Full content of the proposed contract file (PHP interface/enum/value object).
+        required: true
+        type: string
+      status:
+        description: >
+          Proposed status. Must be draft or review — NOT canonical/ratified.
+          The owner promotes to canonical/ratified after reviewing the PR.
+        required: false
+        type: string
+        default: "review"
+      source-repo:
+        description: >
+          Full name of the repo proposing the change (e.g. "Starisian-Technologies/helios-trust").
+          Used in the commit message and PR body for traceability.
+        required: true
+        type: string
+      source-sha:
+        description: >
+          Commit SHA in the source repo that prompted this proposal.
+          Used in the branch name and PR body for traceability.
+        required: true
+        type: string
+      pr-body-extra:
+        description: "Optional additional context appended to the PR body."
+        required: false
+        type: string
+        default: ""
+      draft-pr:
+        description: "Open the PR as a draft (default: true — proposals start as drafts)."
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      CONTRACT_SYNC_PRIVATE_KEY:
+        description: "Private key for the contract-sync GitHub App (org-level secret)."
+        required: true
+    outputs:
+      pr-url:
+        description: "URL of the opened PR in the registry"
+        value: ${{ jobs.propose.outputs.pr-url }}
+      branch:
+        description: "Branch created in the registry for this proposal"
+        value: ${{ jobs.propose.outputs.branch }}
+
+jobs:
+  propose:
+    runs-on: ubuntu-latest
+    outputs:
+      pr-url: ${{ steps.open-pr.outputs.pr-url }}
+      branch: ${{ steps.branch.outputs.name }}
+
+    steps:
+      - name: Mint write token (contract-sync)
+        uses: actions/create-github-app-token@v3
+        id: write-token
+        with:
+          client-id: ${{ vars.CONTRACT_SYNC_CLIENT_ID }}
+          private-key: ${{ secrets.CONTRACT_SYNC_PRIVATE_KEY }}
+          owner: Starisian-Technologies
+          repositories: sparxstar-platform-contracts
+
+      - name: Checkout registry
+        uses: actions/checkout@v7
+        with:
+          repository: Starisian-Technologies/sparxstar-platform-contracts
+          token: ${{ steps.write-token.outputs.token }}
+          fetch-depth: 1
+
+      - name: Resolve contract path from MANIFEST.json
+        id: resolve
+        env:
+          PRODUCT:       ${{ inputs.product }}
+          CONTRACT_PATH: ${{ inputs.contract-path }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, sys
+
+          product = os.environ["PRODUCT"].strip()
+          path_in = os.environ["CONTRACT_PATH"].strip()
+
+          with open("MANIFEST.json") as f:
+              manifest = json.load(f)
+
+          if product not in manifest["contracts"]:
+              print(f"ERROR: '{product}' not found in MANIFEST.json. "
+                    f"Available: {sorted(manifest['contracts'].keys())}", file=sys.stderr)
+              sys.exit(1)
+
+          base = manifest["contracts"][product]["path"].rstrip("/")
+          path = path_in if path_in else base
+
+          # A proposer may only write within the product's own contract tree.
+          if not (path == base or path.startswith(base + "/")):
+              print(f"::error::contract-path '{path}' is outside the product path '{base}'.", file=sys.stderr)
+              sys.exit(1)
+
+          if not path_in:
+              print(f"::error::'{product}' resolves to a directory ('{base}'). "
+                    f"Pass contract-path to the specific file being proposed.", file=sys.stderr)
+              sys.exit(1)
+
+          print(f"Resolved contract path: {path}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"path={path}\n")
+          PYEOF
+
+      - name: Validate proposed status is not canonical/ratified
+        env:
+          STATUS: ${{ inputs.status }}
+        run: |
+          python3 - <<'PYEOF'
+          import os, sys
+
+          status = os.environ["STATUS"].strip().lower()
+          BINDING = {"canonical", "ratified"}
+          if status in BINDING:
+              print(f"::error::Proposed status: {status}.", file=sys.stderr)
+              print("::error::Product repos may not propose canonical or ratified directly.", file=sys.stderr)
+              print("::error::Use status: review. The owner promotes after PR review.", file=sys.stderr)
+              sys.exit(1)
+
+          VALID = {"draft", "review"}
+          if status not in VALID:
+              print(f"::error::Invalid status '{status}'. Use one of: {sorted(VALID)}", file=sys.stderr)
+              sys.exit(1)
+
+          print(f"Status check passed: {status}")
+          PYEOF
+
+      - name: Create proposal branch
+        id: branch
+        env:
+          PRODUCT:    ${{ inputs.product }}
+          SOURCE_SHA: ${{ inputs.source-sha }}
+        run: |
+          SHORT_SHA="${SOURCE_SHA:0:8}"
+          BRANCH="contract-proposal/${PRODUCT}/${SHORT_SHA}"
+          git checkout -b "$BRANCH"
+          echo "name=${BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Write proposed contract
+        env:
+          CONTRACT_PATH:    ${{ steps.resolve.outputs.path }}
+          CONTRACT_CONTENT: ${{ inputs.contract-content }}
+        run: |
+          mkdir -p "$(dirname "$CONTRACT_PATH")"
+          printf '%s' "$CONTRACT_CONTENT" > "$CONTRACT_PATH"
+          echo "Wrote proposed contract to ${CONTRACT_PATH}"
+
+      - name: Commit proposed contract
+        env:
+          PRODUCT:     ${{ inputs.product }}
+          SOURCE_REPO: ${{ inputs.source-repo }}
+          SOURCE_SHA:  ${{ inputs.source-sha }}
+          CONTRACT_PATH: ${{ steps.resolve.outputs.path }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$CONTRACT_PATH"
+          if git diff --cached --quiet; then
+            echo "No changes to commit — proposed contract is identical to current registry content."
+            echo "no_changes=true" >> "$GITHUB_ENV"
+          else
+            git commit \
+              -m "proposed: update ${PRODUCT} contract from ${SOURCE_REPO}@${SOURCE_SHA:0:8}" \
+              -m "Proposed by product repo agent. Review before merging." \
+              -m "Source: ${SOURCE_REPO}@${SOURCE_SHA}" \
+              -m "Registry path: ${CONTRACT_PATH}"
+          fi
+
+      - name: Push branch
+        if: env.no_changes != 'true'
+        env:
+          BRANCH: ${{ steps.branch.outputs.name }}
+        run: |
+          git push origin "$BRANCH"
+
+      - name: Open PR
+        id: open-pr
+        if: env.no_changes != 'true'
+        env:
+          GH_TOKEN:      ${{ steps.write-token.outputs.token }}
+          PRODUCT:       ${{ inputs.product }}
+          SOURCE_REPO:   ${{ inputs.source-repo }}
+          SOURCE_SHA:    ${{ inputs.source-sha }}
+          SHORT_SHA:     ${{ steps.branch.outputs.short_sha }}
+          CONTRACT_PATH: ${{ steps.resolve.outputs.path }}
+          STATUS:        ${{ inputs.status }}
+          EXTRA_BODY:    ${{ inputs.pr-body-extra }}
+          DRAFT_FLAG:    ${{ inputs.draft-pr }}
+          BRANCH:        ${{ steps.branch.outputs.name }}
+        run: |
+          DRAFT_ARG=""
+          if [[ "$DRAFT_FLAG" == "true" ]]; then
+            DRAFT_ARG="--draft"
+          fi
+
+          printf '%s\n' \
+            "## Proposed contract update: \`${PRODUCT}\`" \
+            "" \
+            "**Proposed by:** \`${SOURCE_REPO}\`" \
+            "**Source commit:** \`${SOURCE_SHA}\`" \
+            "**Registry path:** \`${CONTRACT_PATH}\`" \
+            "**Proposed status:** \`${STATUS}\`" \
+            "" \
+            "This contract was proposed by the product repo agent based on current implementation." \
+            "**Review before merging.** The contract is not canonical until this PR is merged." \
+            "" \
+            "### Review checklist" \
+            "" \
+            "- [ ] Contract reflects actual implemented behavior (not aspirational)" \
+            "- [ ] \`status:\` is \`review\` or lower — owner promotes to \`canonical\`/\`ratified\` separately" \
+            "- [ ] Declares \`strict_types\`, a namespace, and is an interface/enum/value object" \
+            "- [ ] Consumer bindings in MANIFEST.json are still accurate" \
+            "- [ ] No patent-sensitive content included without patent-path review" \
+            "" \
+            "${EXTRA_BODY}" > /tmp/pr-body.md
+
+          PR_URL=$(gh pr create \
+            --repo Starisian-Technologies/sparxstar-platform-contracts \
+            --base main \
+            --head "$BRANCH" \
+            --title "contract: ${PRODUCT} update from ${SOURCE_REPO##*/}@${SHORT_SHA}" \
+            --body-file /tmp/pr-body.md \
+            $DRAFT_ARG)
+
+          echo "pr-url=${PR_URL}" >> "$GITHUB_OUTPUT"
+          echo "PR opened: ${PR_URL}"
+
+      - name: No-op — contract unchanged
+        if: env.no_changes == 'true'
+        run: |
+          echo "Proposed contract is identical to the current registry content. No PR opened."
+          echo "If you expected changes, check that the content was rendered correctly before calling this workflow."

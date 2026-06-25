@@ -48,6 +48,11 @@ on:
         type: boolean
         required: false
         default: false
+      report-gate:
+        description: "Consumer enforcement posture recorded in the drift report (advisory|gate). Display-only."
+        type: string
+        required: false
+        default: "advisory"
       artifact-name:
         description: "Name of the uploaded contract artifact."
         type: string
@@ -135,32 +140,35 @@ jobs:
           repositories: sparxstar-platform-contracts
 
       # All caller-controlled values flow through env, never interpolated into run:.
+      # The JSON keys here MUST match what collect-drift.yml consumes:
+      # caller_repo / contract_ref / resolved / recommended / tier / gate.
       - name: Report drift back to registry
         if: ${{ inputs.report-drift }}
         env:
           GH_TOKEN: ${{ steps.write-token.outputs.token }}
-          CONTRACT_REF: ${{ inputs.contract-ref }}
-          CONSUMER: ${{ inputs.consumer != '' && inputs.consumer || github.repository }}
-          SERVER_URL: ${{ github.server_url }}
           CALLER_REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.run_id }}
+          REPORT_GATE: ${{ inputs.report-gate }}
+          OUT_DIR: ${{ github.workspace }}/fetched
           REGISTRY: Starisian-Technologies/sparxstar-platform-contracts
         run: |
           set -euo pipefail
-          slug="$(printf '%s' "$CONSUMER" | tr '/' '-')"
-          ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          run_url="${SERVER_URL}/${CALLER_REPO}/actions/runs/${RUN_ID}"
+          slug="$(printf '%s' "$CALLER_REPO" | tr '/' '-')"
+          meta="${OUT_DIR}/version-meta.json"
           report="$(jq -n \
-            --arg consumer "$CONSUMER" \
-            --arg contract_ref "$CONTRACT_REF" \
-            --arg ts "$ts" \
-            --arg run "$run_url" \
-            '{consumer:$consumer, contract_ref:$contract_ref, reported_at:$ts, run_url:$run, drift: []}')"
+            --arg caller_repo "$CALLER_REPO" \
+            --arg gate "$REPORT_GATE" \
+            --slurpfile m "$meta" \
+            '{caller_repo:$caller_repo,
+              contract_ref: $m[0].contract_ref,
+              resolved:     $m[0].resolved,
+              recommended:  $m[0].recommended,
+              tier:         $m[0].tier,
+              gate:         $gate}')"
           existing_sha="$(gh api "repos/${REGISTRY}/contents/drift/${slug}.json" --jq .sha 2>/dev/null || true)"
           gh api \
             --method PUT \
             "repos/${REGISTRY}/contents/drift/${slug}.json" \
-            -f message="chore: drift report from ${CONSUMER}" \
+            -f message="chore: drift report from ${CALLER_REPO}" \
             -f "content=$(printf '%s' "$report" | base64 -w0)" \
             -f branch="main" \
             ${existing_sha:+-f "sha=${existing_sha}"} \
