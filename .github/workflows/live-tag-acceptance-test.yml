@@ -44,6 +44,8 @@ jobs:
 
   acceptance-test:
     needs: validate-marker-ref
+    # Reusable-workflow `uses:` must be a static ref; marker testing is exercised
+    # through `with.contract-ref` after pre-validating the operator-supplied ref.
     uses: Starisian-Technologies/sparxstar-contracts-registry/.github/workflows/contract-conformance.yml@main
     with:
       enforcement_mode: advisory
