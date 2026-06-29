@@ -10,7 +10,7 @@
         "check": "npm run lint:md && npm run format:md:check && npm run check:contracts"
     },
     "devDependencies": {
-        "markdownlint-cli2": "^0.18.1",
+        "markdownlint-cli2": "^0.22.1",
         "prettier": "^3.5.3"
     }
 }
