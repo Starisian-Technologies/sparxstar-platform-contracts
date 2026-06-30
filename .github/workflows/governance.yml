@@ -12,6 +12,11 @@ on:
   push:
     branches: [main]
 
+# Least privilege for GITHUB_TOKEN. Cross-repo writes use the GitHub App token
+# (CONTRACT_SYNC), not GITHUB_TOKEN, so read-only is sufficient here.
+permissions:
+  contents: read
+
 jobs:
 
   # ─── STEP 1: PULL SPEC ────────────────────────────────────
@@ -46,7 +51,12 @@ jobs:
         id: check
         run: |
           cd source
-          CHANGED=$(git diff HEAD~1 --name-only -- docs/*-tech-spec.md || echo "")
+          # Guard HEAD~1: it doesn't exist on an initial commit or a 1-commit shallow clone.
+          if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+            CHANGED=$(git diff HEAD~1 --name-only -- docs/*-tech-spec.md || echo "")
+          else
+            CHANGED=$(git ls-files -- docs/*-tech-spec.md)
+          fi
           if [ -n "$CHANGED" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
@@ -73,9 +83,10 @@ jobs:
           BRANCH="propose/${SPEC_KEY}-$(date +%Y%m%d-%H%M%S)"
           TARGET="specs/${SPEC_DOMAIN}/${SPEC_KEY}/${SPEC_KEY}-tech-spec.md"
 
-          git clone --depth 1 \
-            "https://x-access-token:${GH_TOKEN}@github.com/${REGISTRY}.git" \
-            registry
+          # Authenticate git via gh's credential helper so the token never
+          # appears in clone/push arguments or logs (CWE-532).
+          gh auth setup-git
+          git clone --depth 1 "https://github.com/${REGISTRY}.git" registry
 
           cd registry
           git checkout -b "$BRANCH"
@@ -90,7 +101,10 @@ jobs:
             exit 0
           fi
           git commit -m "propose: ${SPEC_KEY} spec from ${GITHUB_REPOSITORY}@${GITHUB_SHA:0:7}"
-          git push origin "$BRANCH"
+          if ! git push origin "$BRANCH"; then
+            echo "::error::Failed to push $BRANCH to $REGISTRY"
+            exit 1
+          fi
           gh pr create \
             --repo "$REGISTRY" \
             --base main \
