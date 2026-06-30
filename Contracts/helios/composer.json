@@ -1,0 +1,35 @@
+{
+    "name": "starisian/sparxstar-helios-contracts",
+    "description": "SparxStar Helios — Shared interfaces and value objects for platform consumers. Zero WordPress dependencies; Composer-installable by any PHP service (ESU, DVE, Dheghom, 3iAtlas) that needs to type-check against Helios identity, consent, and agreement contracts.",
+    "license": "proprietary",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Max Barrett",
+            "email": "support@starisian.com",
+            "homepage": "https://www.starisian.com"
+        }
+    ],
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/Starisian-Technologies/sparxstar-ouroboros-integrity"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "starisian/sparxstar-ouroboros-integrity": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "SparxStar\\Helios\\": "."
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
