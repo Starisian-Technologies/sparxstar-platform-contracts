@@ -1,0 +1,119 @@
+name: Governance
+
+# This repository HOLDS and DISPENSES contracts — it does not produce its own
+# interfaces and does not review contracts. So this workflow only handles the
+# spec side of governance: pull this repo's canonical spec from the spec
+# registry, then propose spec updates back to it. There is intentionally no
+# sync-contracts job (nothing to publish) and no code-conformance here.
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege for GITHUB_TOKEN. Cross-repo writes use the GitHub App token
+# (CONTRACT_SYNC), not GITHUB_TOKEN, so read-only is sufficient here.
+permissions:
+  contents: read
+
+jobs:
+
+  # ─── STEP 1: PULL SPEC (deferred) ─────────────────────────
+  # Intentionally omitted for now. It would call the spec registry's reusable
+  # workflow:
+  #   Starisian-Technologies/sparxstar-product-specification-registry/.github/workflows/fetch-specs.yml@<ref>
+  # That workflow/ref is not published yet, and referencing a non-existent
+  # reusable workflow is a startup failure that fails the whole run. Restore this
+  # job once fetch-specs.yml exists at a resolvable tag:
+  #
+  #   pull-spec:
+  #     uses: Starisian-Technologies/sparxstar-product-specification-registry/.github/workflows/fetch-specs.yml@v1.0.0
+  #     with:
+  #       specs: "sparxstar-contracts-registry"
+  #       agent-ref: main
+  #       contract-ref: "v1.0.0"
+  #     secrets:
+  #       COMPOSER_RESOLVER_PRIVATE_KEY: ${{ secrets.COMPOSER_RESOLVER_PRIVATE_KEY }}
+
+  # ─── STEP 2: (no repo-specific build) ─────────────────────
+  # Contract structure/validation already runs in validate-contracts.yml and
+  # the existing CI workflows; not duplicated here.
+
+  # ─── STEP 3: PROPOSE SPEC (create on first push, update on change) ──
+  # On every push to main, compare our docs/<repo-name>-tech-spec.md with the
+  # registry's copy. If the registry lacks it (first push) or it differs, open a
+  # proposal PR; if identical, do nothing. The comparison is against the registry
+  # itself, so creation does not depend on the file changing in this push.
+  # We propose; the registry owns.
+  propose-spec:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: source
+
+      - name: Generate token
+        uses: actions/create-github-app-token@v3
+        id: token
+        with:
+          client-id: ${{ vars.CONTRACT_SYNC_CLIENT_ID }}
+          private-key: ${{ secrets.CONTRACT_SYNC_PRIVATE_KEY }}
+          owner: Starisian-Technologies
+          repositories: sparxstar-product-specification-registry
+
+      - name: Propose to registry
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          # Flat repo-name scheme: every repo's spec lives at
+          # specs/{repo-name}/{repo-name}-tech-spec.md — no domain lookup.
+          SPEC_KEY: ${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+          REGISTRY="Starisian-Technologies/sparxstar-product-specification-registry"
+          TARGET="specs/${SPEC_KEY}/${SPEC_KEY}-tech-spec.md"
+          SRC="source/docs/${SPEC_KEY}-tech-spec.md"
+
+          if [ ! -f "$SRC" ]; then
+            echo "No spec at $SRC — nothing to propose."
+            exit 0
+          fi
+
+          # Authenticate git via gh's credential helper so the token never
+          # appears in clone/push arguments or logs (CWE-532).
+          gh auth setup-git
+          git clone --depth 1 "https://github.com/${REGISTRY}.git" registry
+
+          mkdir -p "registry/$(dirname "$TARGET")"
+          cp "$SRC" "registry/${TARGET}"
+
+          cd registry
+          git config user.name "sparxstar-contract-sync[bot]"
+          git config user.email "contract-sync@starisian.com"
+          git add -A
+          # Idempotent: identical to the registry's copy -> nothing to do.
+          if git diff --cached --quiet; then
+            echo "Registry spec already up to date — nothing to propose."
+            exit 0
+          fi
+
+          # Deterministic branch per source commit, so re-runs don't duplicate.
+          BRANCH="propose/${SPEC_KEY}-${GITHUB_SHA:0:7}"
+          git checkout -b "$BRANCH"
+          git commit -m "propose: ${SPEC_KEY} spec from ${GITHUB_REPOSITORY}@${GITHUB_SHA:0:7}"
+          if ! git push --set-upstream origin "$BRANCH"; then
+            echo "::error::Failed to push $BRANCH to $REGISTRY"
+            exit 1
+          fi
+          # Open a PR unless one already exists for this branch.
+          if [ -z "$(gh pr list --repo "$REGISTRY" --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            gh pr create \
+              --repo "$REGISTRY" \
+              --base main \
+              --head "$BRANCH" \
+              --title "propose: ${SPEC_KEY} spec update" \
+              --body "Proposed by ${GITHUB_REPOSITORY}@${GITHUB_SHA:0:7}. Review before merging."
+          else
+            echo "PR already open for $BRANCH."
+          fi
